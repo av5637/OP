@@ -1,0 +1,360 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>RR&HV Crime Statistics Dashboard</title>
+
+    <!-- Firebase SDK -->
+    <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-app.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-database.js"></script>
+
+    <!-- Font Awesome for icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+    <link rel="stylesheet" href="style.css">
+
+    <!-- Date Range Picker -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/daterangepicker/daterangepicker.css">
+    <script src="https://cdn.jsdelivr.net/npm/jquery@3.6.0/dist/jquery.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/moment@2.29.1/moment.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/daterangepicker@3.1.0/daterangepicker.min.js"></script>
+
+    
+</head>
+<body>
+    <!-- Sidebar Toggle Button -->
+    <button class="sidebar-toggle" id="sidebar-toggle">
+        <i class="fas fa-bars"></i>
+    </button>
+
+    <!-- Main Dashboard Content -->
+    <div class="container" id="main-content">
+        <header>
+            <div class="logo">
+                <i class=""></i>
+                <h1> Crime Statistics Dashboard</h1>
+            </div>
+            <div class="header-controls">
+                <div id="current-date"></div>
+                <button class="add-btn" id="add-statistics-btn">+</button>
+                <button class="view-entries-btn" id="view-entries-btn">View All Entries</button>
+            </div>
+        </header>
+
+        <div class="controls">
+            <div class="area-filter">
+                <button class="area-btn active" data-area="All">All Areas</button>
+                <button class="area-btn" data-area="Addu City">Addu City</button>
+                <button class="area-btn" data-area="Fuvamulak City">Fuvamulak City</button>
+                <button class="area-btn" data-area="Thinadhoo City">Thinadhoo City</button>
+                <button class="area-btn" data-area="Gdh.Gadhoo">Gdh.Gadhoo</button>
+                <button class="area-btn" data-area="Ga.Villigili">Ga.Villigili</button>
+            </div>
+
+            <div class="date-range-picker">
+                <input type="text" id="date-range" placeholder="Select date range">
+                <button class="reset-btn" id="reset-dates">Reset Dates</button>
+            </div>
+        </div>
+
+        <div class="dashboard-grid">
+            <div class="card">
+                <div class="card-header">
+                    <h3 class="card-title">Location Checks</h3>
+                    <i class="fas fa-map-marked-alt card-icon"></i>
+                </div>
+                <div class="card-value" id="total-locationCheck">0</div>
+                <div class="card-description">Total locations inspected</div>
+            </div>
+
+            <div class="card">
+                <div class="card-header">
+                    <h3 class="card-title">Interactions</h3>
+                    <i class="fas fa-users card-icon"></i>
+                </div>
+                <div class="card-value" id="total-interaction">0</div>
+                <div class="card-description">Public interactions conducted</div>
+            </div>
+
+            <div class="card">
+                <div class="card-header">
+                    <h3 class="card-title">Arrests</h3>
+                    <i class="fas fa-handcuffs card-icon"></i>
+                </div>
+                <div class="card-value" id="total-arrest">0</div>
+                <div class="card-description">Suspects apprehended</div>
+            </div>
+
+            <div class="card">
+                <div class="card-header">
+                    <h3 class="card-title">Detentions</h3>
+                    <i class="fas fa-clock card-icon"></i>
+                </div>
+                <div class="card-value" id="total-detention">0</div>
+                <div class="card-description">4+ hour detentions</div>
+            </div>
+
+            <div class="card">
+                <div class="card-header">
+                    <h3 class="card-title">Vehicle Checks</h3>
+                    <i class="fas fa-car card-icon"></i>
+                </div>
+                <div class="card-value" id="total-vehicleCheck">0</div>
+                <div class="card-description">Vehicles inspected</div>
+            </div>
+
+            <div class="card">
+                <div class="card-header">
+                    <h3 class="card-title">Tow Vehicles</h3>
+                    <i class="fas fa-truck-pickup card-icon"></i>
+                </div>
+                <div class="card-value" id="total-towVehicles">0</div>
+                <div class="card-description">Vehicles towed</div>
+            </div>
+        </div>
+
+        <div class="data-table-container">
+            <div style="display: flex; justify-content: space-between; align-items: center;">
+                <h3 class="table-title"><i class="fas fa-list"></i> Recent Operations</h3>
+                <button class="toggle-operations-btn" id="toggle-operations">Show All Operations</button>
+            </div>
+            
+            <div class="operations-container">
+                <table class="data-table">
+                    <thead>
+                        <tr>
+                            <th>Date</th>
+                            <th>Operation</th>
+                            <th>Details</th>
+                            <th>Area</th>
+                        </tr>
+                    </thead>
+                    <tbody id="recentOperations">
+                        <!-- Recent operations will be inserted here -->
+                    </tbody>
+                    <tbody id="allOperations" class="hidden">
+                        <!-- All operations will be inserted here -->
+                    </tbody>
+                </table>
+            </div>
+            <div class="total-operations">
+                Total Unique Operations: <span id="total-operations-count">0</span>
+            </div>
+        </div>
+    </div>
+
+    <!-- Right Sidebar -->
+    <div class="sidebar" id="sidebar">
+        <button class="sidebar-btn" data-target="external-content-1">
+            <i class="fa-sharp fa-solid fa-person"></i>
+            <span>Interactions Management</span>
+        </button>
+        <button class="sidebar-btn" data-target="external-content-2">
+            <i class="fas fa-truck-pickup card-icon"></i>
+            <span>Criminal Vehicles</span>
+        </button>
+        <button class="sidebar-btn" data-target="external-content-3">
+            <i class="fa-solid fa-network-wired"></i>
+            <span>Criminal Networks</span>
+        </button>
+        <button class="sidebar-btn" data-target="external-content-4">
+            <i class="fa-solid fa-file"></i>
+            <span>Active Gang Members</span>
+        </button>
+        <button class="sidebar-btn" data-target="external-content-5">
+            <i class="fa-solid fa-money-bill"></i>
+            <span>Drug Related Money</span>
+        </button>
+        <button class="sidebar-btn" data-target="external-content-6">
+            <i class="fa-regular fa-user"></i>
+            <span>Profile Management </span>
+        </button>
+        <button class="sidebar-btn" data-target="external-content-7">
+            <i class="fa-regular fa-people-group"></i>
+            <span>Family Tree</span>
+        </button>
+    </div>
+
+    <!-- External Content Sections -->
+    <div class="external-content" id="external-content-1">
+        <button class="close-external" data-target="external-content-1">
+            <i class="fas fa-times"></i>
+        </button>
+        <iframe src="PersonInteractionEntry.html" style="width: 100%; height: 100%; border: none;"></iframe>
+    </div>
+
+    <div class="external-content" id="external-content-2">
+        <button class="close-external" data-target="external-content-2">
+            <i class="fas fa-times"></i>
+        </button>
+        <iframe src="Findex.html" style="width: 100%; height: 100%; border: none;"></iframe>
+    </div>
+
+    <div class="external-content" id="external-content-3">
+        <button class="close-external" data-target="external-content-3">
+            <i class="fas fa-times"></i>
+        </button>
+        <iframe src="NetworkVisualization.html" style="width: 100%; height: 100%; border: none;"></iframe>
+    </div>
+
+    <div class="external-content" id="external-content-4">
+        <button class="close-external" data-target="external-content-4">
+            <i class="fas fa-times"></i>
+        </button>
+        <iframe src="photos.html" style="width: 100%; height: 100%; border: none;"></iframe>
+    </div>
+    <div class="external-content" id="external-content-5">
+        <button class="close-external" data-target="external-content-5">
+            <i class="fas fa-times"></i>
+        </button>
+        <iframe src="money.html" style="width: 100%; height: 100%; border: none;"></iframe>
+    </div>
+
+    <div class="external-content" id="external-content-6">
+        <button class="close-external" data-target="external-content-6">
+            <i class="fas fa-times"></i>
+        </button>
+        <iframe src="ProfileManagement.html" style="width: 100%; height: 100%; border: none;"></iframe>
+    </div>
+    <div class="external-content" id="external-content-7">
+        <button class="close-external" data-target="external-content-7">
+            <i class="fas fa-times"></i>
+        </button>
+        <iframe src="familyTree.html" style="width: 100%; height: 100%; border: none;"></iframe>
+    </div>
+
+    <!-- Add Entry Modal -->
+    <div class="modal" id="add-statistics-modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3 class="modal-title">Add New Entry</h3>
+                <button class="close-btn" id="close-modal">&times;</button>
+            </div>
+            
+            <div class="modal-tabs">
+                <button class="modal-tab active" data-tab="operation-tab">Operation</button>
+                <button class="modal-tab" data-tab="statistics-tab">Statistics</button>
+            </div>
+            
+            <!-- Operation Form -->
+            <div class="tab-content active" id="operation-tab">
+                <form id="operation-form">
+                    <div class="form-group date-picker-container">
+                        <label for="operation-date">Date</label>
+                        <input type="text" id="operation-date" class="form-control date-picker" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="operation-name">Operation Name</label>
+                        <input type="text" id="operation-name" class="form-control" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="operation-location">Location</label>
+                        <input type="text" id="operation-location" class="form-control" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="operation-details">Details</label>
+                        <textarea id="operation-details" class="form-control" rows="3" required></textarea>
+                    </div>
+                    <div class="form-group">
+                        <label for="operation-city">City</label>
+                        <select id="operation-city" class="form-control" required>
+                            <option value="">Select City</option>
+                            <option value="Addu City">Addu City</option>
+                            <option value="Fuvamulak City">Fuvamulak City</option>
+                            <option value="Thinadhoo City">Thinadhoo City</option>
+                            <option value="Gdh.Gadhoo">Gdh.Gadhoo</option>
+                            <option value="Ga.Villigili">Ga.Villigili</option>
+                        </select>
+                    </div>
+                    <button type="submit" class="submit-btn">Save Operation</button>
+                </form>
+            </div>
+            
+            <!-- Statistics Form -->
+            <div class="tab-content" id="statistics-tab">
+                <form id="statistics-form">
+                    <div class="form-group date-picker-container">
+                        <label for="statistics-date">Date</label>
+                        <input type="text" id="statistics-date" class="form-control date-picker" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="statistics-city">City</label>
+                        <select id="statistics-city" class="form-control" required>
+                            <option value="">Select City</option>
+                            <option value="Addu City">Addu City</option>
+                            <option value="Fuvamulak City">Fuvamulak City</option>
+                            <option value="Thinadhoo City">Thinadhoo City</option>
+                            <option value="Gdh.Gadhoo">Gdh.Gadhoo</option>
+                            <option value="Ga.Villigili">Ga.Villigili</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label for="location-check">Location Checks</label>
+                        <input type="number" id="location-check" class="form-control" min="0" value="0" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="interaction">Interactions</label>
+                        <input type="number" id="interaction" class="form-control" min="0" value="0" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="arrest">Arrests</label>
+                        <input type="number" id="arrest" class="form-control" min="0" value="0" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="detention">Detentions</label>
+                        <input type="number" id="detention" class="form-control" min="0" value="0" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="vehicle-check">Vehicle Checks</label>
+                        <input type="number" id="vehicle-check" class="form-control" min="0" value="0" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="tow-vehicles">Tow Vehicles</label>
+                        <input type="number" id="tow-vehicles" class="form-control" min="0" value="0" required>
+                    </div>
+                    <button type="submit" class="submit-btn">Save Statistics</button>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- Entries Modal -->
+    <div class="entries-modal" id="entries-modal">
+        <div class="entries-modal-content">
+            <div class="modal-header">
+                <h3 class="modal-title">All Entries</h3>
+                <button class="close-btn" id="close-entries-modal">&times;</button>
+            </div>
+            
+            <div class="controls">
+                <div class="date-range-picker">
+                    <input type="text" id="entries-date-range" placeholder="Select date range">
+                    <button class="reset-btn" id="reset-entries-dates">Reset Dates</button>
+                </div>
+            </div>
+            
+            <div class="operations-container">
+                <table class="entries-table">
+                    <thead>
+                        <tr>
+                            <th>Date</th>
+                            <th>Type</th>
+                            <th>Details</th>
+                            <th>Area</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody id="entries-table-body">
+                        <!-- All entries will be inserted here -->
+                    </tbody>
+                </table>
+            </div>
+            <div class="total-operations">
+                Total Entries: <span id="total-entries-count">0</span>
+            </div>
+        </div>
+    </div>
+
+<script src="script.js"></script>
+</body>
+</html>
