@@ -1,0 +1,1318 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Criminal Records</title>
+    <!-- Firebase SDK -->
+    <script src="https://www.gstatic.com/firebasejs/9.6.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.6.0/firebase-database-compat.js"></script>
+    <!-- DataTables CSS -->
+    <link rel="stylesheet" type="text/css" href="https://cdn.datatables.net/1.11.5/css/jquery.dataTables.css">
+    <link rel="stylesheet" type="text/css" href="https://cdn.datatables.net/select/1.3.4/css/select.dataTables.min.css">
+    <link rel="stylesheet" type="text/css" href="https://cdn.datatables.net/buttons/2.2.2/css/buttons.dataTables.min.css">
+    <!-- Font Awesome for icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <!-- jsPDF for PDF generation -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.25/jspdf.plugin.autotable.min.js"></script>
+    <!-- D3.js for family tree -->
+    <script src="https://d3js.org/d3.v7.min.js"></script>
+    <style>
+        * {
+            box-sizing: border-box;
+        }
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            margin: 0;
+            padding: 10px;
+            background-color: #f5f5f5;
+            font-size: 14px;
+        }
+        .container {
+            max-width: 100%;
+            margin: 0 auto;
+            background: white;
+            padding: 15px;
+            border-radius: 8px;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+        }
+        h1 {
+            color: #2c3e50;
+            margin-bottom: 15px;
+            font-size: 1.5rem;
+            text-align: center;
+        }
+        .btn {
+            padding: 8px 12px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 14px;
+            font-weight: 600;
+            text-decoration: none;
+            display: inline-block;
+            margin-bottom: 15px;
+            transition: all 0.3s;
+        }
+        .btn:hover {
+            opacity: 0.9;
+            transform: translateY(-1px);
+        }
+        .btn-add {
+            background: #2ecc71;
+            color: white;
+        }
+        .btn-view {
+            background: #9b59b6;
+            color: white;
+            padding: 5px 8px;
+            font-size: 12px;
+        }
+        .btn-delete {
+            background: #e74c3c;
+            color: white;
+            padding: 5px 8px;
+            font-size: 12px;
+        }
+        .btn-interaction {
+            background: #f39c12;
+            color: white;
+            padding: 5px 8px;
+            font-size: 12px;
+        }
+        .btn-family {
+            background: #3498db;
+            color: white;
+            padding: 5px 8px;
+            font-size: 12px;
+        }
+        .photo-thumbnail {
+            width: 50px;
+            height: 50px;
+            border-radius: 4px;
+            object-fit: cover;
+            cursor: pointer;
+            transition: transform 0.2s;
+        }
+        .photo-thumbnail:hover {
+            transform: scale(1.5);
+        }
+        .status-wanted {
+            color: #e74c3c;
+            font-weight: bold;
+        }
+        .status-active {
+            color: #f39c12;
+            font-weight: bold;
+        }
+        .status-inactive {
+            color: #2ecc71;
+            font-weight: bold;
+        }
+        .status-deceased {
+            color: #7f8c8d;
+            font-weight: bold;
+        }
+        .action-buttons {
+            display: flex;
+            gap: 5px;
+            flex-wrap: wrap;
+        }
+        /* Modal styles */
+        .modal {
+            display: none;
+            position: fixed;
+            z-index: 1000;
+            left: 0;
+            top: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0,0,0,0.8);
+            overflow: auto;
+        }
+        .modal-content {
+            background-color: #fefefe;
+            margin: 5% auto;
+            padding: 20px;
+            border-radius: 8px;
+            width: 80%;
+            max-width: 800px;
+            box-shadow: 0 4px 8px rgba(0,0,0,0.2);
+        }
+        .modal-image-container {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100%;
+        }
+        .modal-image {
+            max-width: 90%;
+            max-height: 90%;
+            object-fit: contain;
+        }
+        .close {
+            color: #aaa;
+            float: right;
+            font-size: 28px;
+            font-weight: bold;
+            cursor: pointer;
+        }
+        .close:hover {
+            color: black;
+        }
+        /* Interaction form styles */
+        .form-group {
+            margin-bottom: 15px;
+        }
+        .form-group label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: 600;
+        }
+        .form-control {
+            width: 100%;
+            padding: 8px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            font-size: 14px;
+        }
+        .form-control:focus {
+            border-color: #3498db;
+            outline: none;
+            box-shadow: 0 0 5px rgba(52,152,219,0.5);
+        }
+        .btn-submit {
+            background: #2ecc71;
+            color: white;
+            width: 100%;
+            padding: 10px;
+            font-size: 16px;
+        }
+        .btn-cancel {
+            background: #95a5a6;
+            color: white;
+            width: 100%;
+            padding: 10px;
+            font-size: 16px;
+            margin-top: 10px;
+        }
+        /* Interaction table styles */
+        .interaction-table {
+            width: 100%;
+            margin-top: 20px;
+            border-collapse: collapse;
+        }
+        .interaction-table th, .interaction-table td {
+            padding: 8px;
+            border: 1px solid #ddd;
+            text-align: left;
+        }
+        .interaction-table th {
+            background-color: #f2f2f2;
+        }
+        .interaction-table tr:nth-child(even) {
+            background-color: #f9f9f9;
+        }
+        .interaction-table tr:hover {
+            background-color: #f1f1f1;
+        }
+        /* Image upload styles */
+        .image-upload-container {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            margin-bottom: 15px;
+        }
+        .image-preview {
+            width: 150px;
+            height: 150px;
+            border: 2px dashed #ddd;
+            border-radius: 8px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            overflow: hidden;
+            margin-bottom: 10px;
+            position: relative;
+        }
+        .image-preview img {
+            max-width: 100%;
+            max-height: 100%;
+            object-fit: cover;
+        }
+        .upload-btn {
+            background: #3498db;
+            color: white;
+            padding: 8px 15px;
+            border-radius: 4px;
+            cursor: pointer;
+            display: inline-block;
+        }
+        .upload-btn input {
+            display: none;
+        }
+        .add-image-icon {
+            font-size: 40px;
+            color: #95a5a6;
+            cursor: pointer;
+        }
+        /* Tabs */
+        .tab-container {
+            margin-top: 20px;
+        }
+        .tab-buttons {
+            display: flex;
+            border-bottom: 1px solid #ddd;
+        }
+        .tab-button {
+            padding: 10px 20px;
+            background: #f1f1f1;
+            border: none;
+            cursor: pointer;
+            font-weight: 600;
+            margin-right: 5px;
+            border-radius: 5px 5px 0 0;
+        }
+        .tab-button.active {
+            background: #3498db;
+            color: white;
+        }
+        .tab-content {
+            display: none;
+            padding: 15px;
+            border: 1px solid #ddd;
+            border-top: none;
+            border-radius: 0 0 5px 5px;
+        }
+        .tab-content.active {
+            display: block;
+        }
+        /* Vehicle section */
+        .vehicle-section {
+            background-color: #f9f9f9;
+            padding: 15px;
+            border-radius: 5px;
+            margin-bottom: 15px;
+        }
+        .section-title {
+            font-weight: bold;
+            margin-bottom: 10px;
+            color: #2c3e50;
+            border-bottom: 1px solid #ddd;
+            padding-bottom: 5px;
+        }
+        /* Delete button in interactions */
+        .delete-interaction {
+            color: #e74c3c;
+            cursor: pointer;
+            margin-left: 10px;
+        }
+        /* Person image at top */
+        .person-image-top {
+            display: flex;
+            justify-content: center;
+            margin-bottom: 20px;
+        }
+        /* Details table */
+        .details-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-bottom: 20px;
+        }
+        .details-table th, .details-table td {
+            padding: 10px;
+            border: 1px solid #ddd;
+            vertical-align: top;
+        }
+        .details-table th {
+            background-color: #f2f2f2;
+            width: 30%;
+        }
+        /* Interaction details modal */
+        .interaction-details-modal {
+            max-width: 800px;
+            width: 90%;
+        }
+        .interaction-details-content {
+            max-height: 80vh;
+            overflow-y: auto;
+        }
+        .details-section {
+            margin-bottom: 20px;
+        }
+        .details-section h4 {
+            margin-bottom: 10px;
+            color: #2c3e50;
+            border-bottom: 1px solid #ddd;
+            padding-bottom: 5px;
+        }
+        .details-images {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 20px;
+            margin-top: 15px;
+        }
+        .details-image-container {
+            text-align: center;
+        }
+        .details-image-container img {
+            max-width: 200px;
+            max-height: 200px;
+            cursor: pointer;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+        }
+        .details-image-container p {
+            margin-top: 5px;
+            font-weight: bold;
+        }
+        /* Export options */
+        .export-options {
+            margin: 20px 0;
+            padding: 15px;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+            background-color: #f9f9f9;
+        }
+        .export-options h4 {
+            margin-top: 0;
+            color: #2c3e50;
+            border-bottom: 1px solid #ddd;
+            padding-bottom: 5px;
+        }
+        .export-checkbox {
+            margin: 10px 0;
+        }
+        .export-checkbox label {
+            margin-left: 5px;
+        }
+        /* Vehicle image in table */
+        .vehicle-image-small {
+            width: 30px;
+            height: 30px;
+            object-fit: cover;
+            border-radius: 4px;
+            cursor: pointer;
+        }
+        /* Criminal details modal */
+        .criminal-details-modal {
+            max-width: 800px;
+            width: 90%;
+        }
+        .criminal-details-content {
+            max-height: 80vh;
+            overflow-y: auto;
+        }
+        /* Family Members Modal */
+        .family-modal {
+            max-width: 1000px;
+            width: 95%;
+        }
+        .family-modal-content {
+            max-height: 90vh;
+            overflow-y: auto;
+        }
+        /* Family Tree Styles */
+        #familyTreeContainer {
+            width: 100%;
+            height: 500px;
+            overflow: auto;
+            border: 1px solid #ddd;
+            margin-top: 20px;
+            background-color: white;
+        }
+        .node {
+            cursor: pointer;
+        }
+        .node circle {
+            fill: #fff;
+            stroke: steelblue;
+            stroke-width: 2px;
+        }
+        .node text {
+            font: 12px sans-serif;
+        }
+        .link {
+            fill: none;
+            stroke: #ccc;
+            stroke-width: 2px;
+        }
+        .family-member-image {
+            width: 50px;
+            height: 50px;
+            border-radius: 50%;
+            object-fit: cover;
+            margin-right: 10px;
+        }
+        .family-member-card {
+            display: flex;
+            align-items: center;
+            padding: 10px;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+            margin-bottom: 10px;
+            background-color: #f9f9f9;
+        }
+        .family-member-info {
+            flex-grow: 1;
+        }
+        .family-member-actions {
+            display: flex;
+            gap: 5px;
+        }
+        .family-form-row {
+            display: flex;
+            gap: 15px;
+            margin-bottom: 15px;
+        }
+        .family-form-col {
+            flex: 1;
+        }
+        /* Family Tree Navigation */
+        .family-tree-nav {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 15px;
+        }
+        /* Filter controls */
+        .filter-controls {
+            margin-bottom: 15px;
+            padding: 10px;
+            background-color: #f9f9f9;
+            border-radius: 5px;
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+        }
+        .filter-group {
+            display: flex;
+            align-items: center;
+        }
+        .filter-group label {
+            margin-right: 5px;
+            font-weight: 600;
+        }
+        .filter-group select {
+            padding: 5px;
+            border-radius: 4px;
+            border: 1px solid #ddd;
+        }
+        .filter-group button {
+            padding: 5px 10px;
+            background-color: #3498db;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+        }
+        .filter-group button:hover {
+            background-color: #2980b9;
+        }
+        @media (max-width: 768px) {
+            .modal-content {
+                width: 95%;
+                margin: 10px auto;
+            }
+            .action-buttons {
+                flex-direction: column;
+            }
+            .btn-view, .btn-delete, .btn-interaction, .btn-family {
+                width: 100%;
+                margin: 2px 0;
+            }
+            .details-table th, .details-table td {
+                display: block;
+                width: 100%;
+            }
+            .details-table th {
+                background-color: transparent;
+                border-bottom: none;
+                padding-bottom: 0;
+            }
+            .details-table td {
+                padding-top: 5px;
+            }
+            .details-images {
+                flex-direction: column;
+            }
+            .family-form-row {
+                flex-direction: column;
+            }
+            .filter-controls {
+                flex-direction: column;
+            }
+            .filter-group {
+                width: 100%;
+                margin-bottom: 5px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Criminal Records</h1>
+        <a href="entry.html" class="btn btn-add">Add New Criminal</a>
+        
+        <!-- Filter Controls -->
+        <div class="filter-controls">
+            <div class="filter-group">
+                <label for="filterCity">City:</label>
+                <select id="filterCity">
+                    <option value="">All Cities</option>
+                </select>
+            </div>
+            <div class="filter-group">
+                <label for="filterGroup">Crime Group:</label>
+                <select id="filterGroup">
+                    <option value="">All Groups</option>
+                </select>
+            </div>
+            <div class="filter-group">
+                <label for="filterPosition">Group Position:</label>
+                <select id="filterPosition">
+                    <option value="">All Positions</option>
+                </select>
+            </div>
+            <div class="filter-group">
+                <button id="applyFilters">Apply Filters</button>
+                <button id="resetFilters">Reset</button>
+            </div>
+        </div>
+        
+        <table id="criminalsTable" class="display" style="width:100%">
+            <thead>
+                <tr>
+                    <th>Photo</th>
+                    <th>ID</th>
+                    <th>Name</th>
+                    <th>Address</th>
+                    <th>Date of Birth</th>
+                    <th>Age</th>
+                    <th>City</th>
+                    <th>Crime Group</th>
+                    <th>Group Position</th>
+                    <th>Status</th>
+                    <th>Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+                <!-- Data will be loaded here -->
+            </tbody>
+        </table>
+    </div>
+
+    <!-- Image Preview Modal -->
+    <div id="imageModal" class="modal">
+        <div class="modal-content">
+            <span class="close">&times;</span>
+            <div class="modal-image-container">
+                <img id="modalImage" class="modal-image" src="">
+            </div>
+        </div>
+    </div>
+
+    <!-- Criminal Details Modal -->
+    <div id="criminalDetailsModal" class="modal">
+        <div class="modal-content criminal-details-modal">
+            <span class="close" onclick="closeCriminalDetailsModal()">&times;</span>
+            <div class="criminal-details-content" id="criminalDetailsContent">
+                <!-- Criminal details will be loaded here -->
+            </div>
+        </div>
+    </div>
+
+    <!-- Family Members Modal -->
+    <div id="familyModal" class="modal family-modal">
+        <div class="modal-content family-modal-content">
+            <span class="close" onclick="closeFamilyModal()">&times;</span>
+            <h2 id="familyModalTitle">Family Members</h2>
+            
+            <div class="tab-container">
+                <div class="tab-buttons">
+                    <button class="tab-button active" onclick="openFamilyTab(event, 'addFamilyTab')">Add Family Member</button>
+                    <button class="tab-button" onclick="openFamilyTab(event, 'viewFamilyTab')">View Family Members</button>
+                    
+                </div>
+                
+                <div id="addFamilyTab" class="tab-content active">
+                    <form id="familyMemberForm">
+                        <input type="hidden" id="familyCriminalId">
+                        
+                        <div class="family-form-row">
+                            <div class="family-form-col">
+                                <div class="image-upload-container">
+                                    <div class="image-preview" id="familyImagePreview">
+                                        <i class="fas fa-user add-image-icon" id="addFamilyImageIcon"></i>
+                                        <img id="previewFamilyImage" style="display: none;">
+                                    </div>
+                                    <label class="upload-btn">
+                                        <input type="file" id="familyImageUpload" accept="image/*">
+                                        Add Member Image
+                                    </label>
+                                </div>
+                            </div>
+                            
+                            <div class="family-form-col">
+                                <div class="form-group">
+                                    <label for="familyId">ID Card No.</label>
+                                    <input type="text" id="familyId" class="form-control" required>
+                                </div>
+                                
+                                <div class="form-group">
+                                    <label for="familyName">Name</label>
+                                    <input type="text" id="familyName" class="form-control" required>
+                                </div>
+                                
+                                <div class="form-group">
+                                    <label for="familyAddress">Address</label>
+                                    <input type="text" id="familyAddress" class="form-control" required>
+                                </div>
+                                
+                                <div class="form-group">
+                                    <label for="familyRelation">Relation</label>
+                                    <select id="familyRelation" class="form-control" required>
+                                        <option value="">Select relation</option>
+                                        <option value="Father">Father</option>
+                                        <option value="Mother">Mother</option>
+                                        <option value="Son">Son</option>
+                                        <option value="Daughter">Daughter</option>
+                                        <option value="Brother">Brother</option>
+                                        <option value="Sister">Sister</option>
+                                        <option value="Husband">Husband</option>
+                                        <option value="Wife">Wife</option>
+                                        <option value="Grandfather">Grandfather</option>
+                                        <option value="Grandmother">Grandmother</option>
+                                        <option value="Grandson">Grandson</option>
+                                        <option value="Granddaughter">Granddaughter</option>
+                                        <option value="Uncle">Uncle</option>
+                                        <option value="Aunt">Aunt</option>
+                                        <option value="Nephew">Nephew</option>
+                                        <option value="Niece">Niece</option>
+                                        <option value="Cousin">Cousin</option>
+                                        <option value="Other">Other</option>
+                                    </select>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <button type="submit" class="btn btn-submit">Save Family Member</button>
+                        <button type="button" class="btn btn-cancel" onclick="closeFamilyModal()">Cancel</button>
+                    </form>
+                </div>
+                
+                <div id="viewFamilyTab" class="tab-content">
+                    <div id="familyMembersList">
+                        <!-- Family members will be loaded here -->
+                    </div>
+                </div>
+                
+                <div id="familyTreeTab" class="tab-content">
+                    <div class="family-tree-nav">
+                        <button class="btn" onclick="renderFamilyTree()">Refresh Tree</button>
+                        <button class="btn" onclick="downloadFamilyTree()">Download as Image</button>
+                    </div>
+                    <div id="familyTreeContainer"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- jQuery and DataTables JS -->
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <script src="https://cdn.datatables.net/1.11.5/js/jquery.dataTables.js"></script>
+    <script src="https://cdn.datatables.net/select/1.3.4/js/dataTables.select.min.js"></script>
+    <script src="https://cdn.datatables.net/buttons/2.2.2/js/dataTables.buttons.min.js"></script>
+    
+    <script>
+        // Initialize jsPDF
+        const { jsPDF } = window.jspdf;
+        
+        // For Firebase JS SDK v7.20.0 and later, measurementId is optional
+        const firebaseConfig = {
+          apiKey: "AIzaSyCqdg6ePdCGvlzHpaEFgOUFPaHEsPYIApw",
+          authDomain: "operationinterectiondata.firebaseapp.com",
+          databaseURL: "https://operationinterectiondata-default-rtdb.firebaseio.com",
+          projectId: "operationinterectiondata",
+          storageBucket: "operationinterectiondata.firebasestorage.app",
+          messagingSenderId: "211887231593",
+          appId: "1:211887231593:web:aac4253ab20803876348f8",
+          measurementId: "G-HSL5TF5FTB"
+        };
+
+        // Initialize Firebase
+        firebase.initializeApp(firebaseConfig);
+        const database = firebase.database();
+        
+        // Global variables
+        let currentCriminalId = null;
+        let familyMembers = [];
+        let currentCriminalDetails = null;
+        let criminalsData = [];
+        let uniqueCities = new Set();
+        let uniqueGroups = new Set();
+        let uniquePositions = new Set();
+
+        $(document).ready(function() {
+            // Initialize DataTable with the new column order
+            const table = $('#criminalsTable').DataTable({
+                columns: [
+                    { data: 'image', render: renderPhoto },
+                    { data: 'id', render: renderIdAsLink },
+                    { data: 'name' },
+                    { data: 'address' },
+                    { data: 'dob', render: formatDate },
+                    { data: 'dob', render: calculateAge },
+                    { data: 'city' },
+                    { data: 'group' },
+                    { data: 'groupPosition' },
+                    { data: 'status', render: renderStatus },
+                    { data: null, render: renderActions }
+                ],
+                responsive: true,
+                dom: 'Bfrtip',
+                buttons: [
+                    'copy', 'csv', 'excel', 'pdf', 'print'
+                ]
+            });
+
+            // Load data from Firebase
+            database.ref('criminals').on('value', (snapshot) => {
+                criminalsData = [];
+                uniqueCities.clear();
+                uniqueGroups.clear();
+                uniquePositions.clear();
+                
+                snapshot.forEach(childSnapshot => {
+                    const criminal = childSnapshot.val();
+                    criminal.key = childSnapshot.key;
+                    criminalsData.push(criminal);
+                    
+                    // Collect unique values for filters
+                    if (criminal.city) uniqueCities.add(criminal.city);
+                    if (criminal.group) uniqueGroups.add(criminal.group);
+                    if (criminal.groupPosition) uniquePositions.add(criminal.groupPosition);
+                });
+                
+                // Update filter dropdowns
+                updateFilterDropdowns();
+                
+                table.clear().rows.add(criminalsData).draw();
+            });
+
+            // Set up filter controls
+            $('#applyFilters').click(applyFilters);
+            $('#resetFilters').click(resetFilters);
+
+            // Image modal functionality
+            const imageModal = document.getElementById("imageModal");
+            const modalImg = document.getElementById("modalImage");
+            const imageModalClose = imageModal.getElementsByClassName("close")[0];
+
+            // When the user clicks on <span> (x), close the modal
+            imageModalClose.onclick = function() {
+                imageModal.style.display = "none";
+            }
+
+            // When the user clicks anywhere outside of the modal, close it
+            window.onclick = function(event) {
+                if (event.target == imageModal) {
+                    imageModal.style.display = "none";
+                }
+                if (event.target == criminalDetailsModal) {
+                    closeCriminalDetailsModal();
+                }
+                if (event.target == familyModal) {
+                    closeFamilyModal();
+                }
+            }
+
+            // Family member form submission
+            $('#familyMemberForm').on('submit', function(e) {
+                e.preventDefault();
+                saveFamilyMember();
+            });
+
+            // Image upload preview for family member
+            $('#familyImageUpload').change(function() {
+                const file = this.files[0];
+                if (file) {
+                    const reader = new FileReader();
+                    reader.onload = function(e) {
+                        $('#previewFamilyImage').attr('src', e.target.result).show();
+                        $('#addFamilyImageIcon').hide();
+                    }
+                    reader.readAsDataURL(file);
+                }
+            });
+
+            // Click on image previews to trigger file inputs
+            $('#familyImagePreview').click(function() {
+                $('#familyImageUpload').click();
+            });
+        });
+
+        function updateFilterDropdowns() {
+            // Update city filter
+            const citySelect = $('#filterCity');
+            citySelect.empty().append('<option value="">All Cities</option>');
+            Array.from(uniqueCities).sort().forEach(city => {
+                citySelect.append(`<option value="${city}">${city}</option>`);
+            });
+            
+            // Update group filter
+            const groupSelect = $('#filterGroup');
+            groupSelect.empty().append('<option value="">All Groups</option>');
+            Array.from(uniqueGroups).sort().forEach(group => {
+                groupSelect.append(`<option value="${group}">${group}</option>`);
+            });
+            
+            // Update position filter
+            const positionSelect = $('#filterPosition');
+            positionSelect.empty().append('<option value="">All Positions</option>');
+            Array.from(uniquePositions).sort().forEach(position => {
+                positionSelect.append(`<option value="${position}">${position}</option>`);
+            });
+        }
+
+        function applyFilters() {
+            const cityFilter = $('#filterCity').val();
+            const groupFilter = $('#filterGroup').val();
+            const positionFilter = $('#filterPosition').val();
+            
+            $.fn.dataTable.ext.search.push(
+                function(settings, data, dataIndex) {
+                    const rowData = criminalsData[dataIndex];
+                    
+                    // Check city filter
+                    if (cityFilter && rowData.city !== cityFilter) {
+                        return false;
+                    }
+                    
+                    // Check group filter
+                    if (groupFilter && rowData.group !== groupFilter) {
+                        return false;
+                    }
+                    
+                    // Check position filter
+                    if (positionFilter && rowData.groupPosition !== positionFilter) {
+                        return false;
+                    }
+                    
+                    return true;
+                }
+            );
+            
+            $('#criminalsTable').DataTable().draw();
+            $.fn.dataTable.ext.search.pop();
+        }
+
+        function resetFilters() {
+            $('#filterCity').val('');
+            $('#filterGroup').val('');
+            $('#filterPosition').val('');
+            $('#criminalsTable').DataTable().search('').draw();
+        }
+
+        function renderPhoto(data, type, row) {
+            if (type === 'display') {
+                if (data) {
+                    return `<img src="${data}" class="photo-thumbnail" onclick="showImage('${data}')">`;
+                } else {
+                    return '<img src="https://via.placeholder.com/50" class="photo-thumbnail">';
+                }
+            }
+            return data;
+        }
+
+        function renderIdAsLink(data, type, row) {
+            if (type === 'display') {
+                return `<a href="#" onclick="viewCriminalDetails('${row.key}'); return false;">${data}</a>`;
+            }
+            return data;
+        }
+
+        function formatDate(data, type, row) {
+            if (type === 'display') {
+                if (!data) return 'N/A';
+                const date = new Date(data);
+                return date.toLocaleDateString();
+            }
+            return data;
+        }
+
+        function renderStatus(data, type, row) {
+            if (type === 'display') {
+                let className = '';
+                if (data === 'Wanted') className = 'status-wanted';
+                else if (data === 'Active') className = 'status-active';
+                else if (data === 'InActive') className = 'status-inactive';
+                else if (data === 'Deceased') className = 'status-deceased';
+                
+                return `<span class="${className}">${data}</span>`;
+            }
+            return data;
+        }
+
+        function calculateAge(data, type, row) {
+            if (type === 'display') {
+                if (!data) return 'N/A';
+                const birthDate = new Date(data);
+                const today = new Date();
+                let age = today.getFullYear() - birthDate.getFullYear();
+                const monthDiff = today.getMonth() - birthDate.getMonth();
+                
+                if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < birthDate.getDate())) {
+                    age--;
+                }
+                
+                return age;
+            }
+            return data;
+        }
+
+        function renderActions(data, type, row) {
+            if (type === 'display') {
+                return `
+                    <div class="action-buttons">
+                        <button class="btn btn-view" onclick="viewCriminalDetails('${data.key}')">
+                            <i class="fas fa-eye"></i> View
+                        </button>
+                        <a href="view.html"=${data.key}" class="btn btn-interaction">
+                            <i class="fas fa-exchange-alt"></i> Interaction
+                        </a>
+                        <button class="btn btn-family" onclick="openFamilyModal('${data.key}', '${data.name}')">
+                            <i class="fas fa-users"></i> Family
+                        </button>
+                        <button class="btn btn-delete" onclick="deleteCriminal('${data.key}', '${data.name}')">
+                            <i class="fas fa-trash"></i> Delete
+                        </button>
+                    </div>
+                `;
+            }
+            return data;
+        }
+
+        function showImage(imageSrc) {
+            const modal = document.getElementById("imageModal");
+            const modalImg = document.getElementById("modalImage");
+            modal.style.display = "block";
+            modalImg.src = imageSrc;
+        }
+
+        function deleteCriminal(key, name) {
+            if (confirm(`Are you sure you want to delete ${name}? This will also delete all associated interactions and family members.`)) {
+                // First delete all interactions for this criminal
+                database.ref('interactions').orderByChild('criminalId').equalTo(key).once('value', snapshot => {
+                    const updates = {};
+                    snapshot.forEach(interaction => {
+                        updates[`interactions/${interaction.key}`] = null;
+                    });
+                    
+                    // Then delete all family members
+                    database.ref('familyMembers').orderByChild('criminalId').equalTo(key).once('value', familySnapshot => {
+                        familySnapshot.forEach(familyMember => {
+                            updates[`familyMembers/${familyMember.key}`] = null;
+                        });
+                        
+                        // Then delete the criminal
+                        updates[`criminals/${key}`] = null;
+                        
+                        database.ref().update(updates)
+                            .then(() => {
+                                alert('Record and all associated data deleted successfully');
+                            })
+                            .catch(error => {
+                                alert('Error deleting record: ' + error.message);
+                            });
+                    });
+                });
+            }
+        }
+
+        function closeCriminalDetailsModal() {
+            document.getElementById("criminalDetailsModal").style.display = "none";
+        }
+
+        function openFamilyModal(criminalId, criminalName) {
+            const modal = document.getElementById("familyModal");
+            document.getElementById("familyModalTitle").textContent = `Family Members for ${criminalName}`;
+            document.getElementById("familyCriminalId").value = criminalId;
+            currentCriminalId = criminalId;
+            
+            // Reset form
+            $('#familyMemberForm')[0].reset();
+            $('#previewFamilyImage').attr('src', '').hide();
+            $('#addFamilyImageIcon').show();
+            $('#familyImageUpload').val('');
+            
+            // Load family members
+            loadFamilyMembers(criminalId);
+            
+            // Show the modal and default to first tab
+            modal.style.display = "block";
+            openFamilyTab(null, 'addFamilyTab');
+        }
+
+        function closeFamilyModal() {
+            document.getElementById("familyModal").style.display = "none";
+            currentCriminalId = null;
+        }
+
+        function openFamilyTab(evt, tabName) {
+            // Hide all tab content
+            $('.tab-content').removeClass('active');
+            
+            // Remove active class from all tab buttons
+            $('.tab-button').removeClass('active');
+            
+            // Show the current tab and add active class to the button
+            $('#' + tabName).addClass('active');
+            
+            if (evt) {
+                $(evt.currentTarget).addClass('active');
+            } else {
+                // If called programmatically, activate the first button for this tab
+                $(`.tab-button:contains(${tabName === 'addFamilyTab' ? 'Add Family Member' : tabName === 'viewFamilyTab' ? 'View Family Members' : 'Family Tree'})`).addClass('active');
+            }
+            
+            // If opening family tree tab, render the tree
+            if (tabName === 'familyTreeTab') {
+                renderFamilyTree();
+            }
+        }
+        
+        function viewCriminalDetails(criminalKey) {
+            database.ref('criminals').child(criminalKey).once('value', snapshot => {
+                const criminal = snapshot.val();
+                if (!criminal) return;
+                
+                currentCriminalDetails = criminal;
+                
+                let detailsHtml = `
+                    <div class="person-image-top">
+                        ${criminal.image ? `<img src="${criminal.image}" style="max-width: 200px; max-height: 200px; border-radius: 8px;">` : '<i class="fas fa-user" style="font-size: 100px;"></i>'}
+                    </div>
+                    
+                    <div class="details-section">
+                        <h3>Criminal Details</h3>
+                        <table class="details-table">
+                            <tr>
+                                <th>ID</th>
+                                <td>${criminal.id || 'N/A'}</td>
+                            </tr>
+                            <tr>
+                                <th>Name</th>
+                                <td>${criminal.name || 'N/A'}</td>
+                            </tr>
+                            <tr>
+                                <th>Address</th>
+                                <td>${criminal.address || 'N/A'}</td>
+                            </tr>
+                            <tr>
+                                <th>Date of Birth</th>
+                                <td>${criminal.dob ? new Date(criminal.dob).toLocaleDateString() : 'N/A'}</td>
+                            </tr>
+                            <tr>
+                                <th>Age</th>
+                                <td>${calculateAge(criminal.dob, 'display', criminal)}</td>
+                            </tr>
+                            <tr>
+                                <th>City</th>
+                                <td>${criminal.city || 'N/A'}</td>
+                            </tr>
+                            <tr>
+                                <th>Crime Group</th>
+                                <td>${criminal.group || 'N/A'}</td>
+                            </tr>
+                            <tr>
+                                <th>Group Position</th>
+                                <td>${criminal.groupPosition || 'N/A'}</td>
+                            </tr>
+                            <tr>
+                                <th>Status</th>
+                                <td>${criminal.status || 'N/A'}</td>
+                            </tr>
+                            <tr>
+                                <th>Contact</th>
+                                <td>${criminal.contact || 'N/A'}</td>
+                            </tr>
+                            <tr>
+                                <th>Description</th>
+                                <td>${criminal.description || 'N/A'}</td>
+                            </tr>
+                        </table>
+                    </div>
+                `;
+                
+                // Set the content and show the modal
+                document.getElementById('criminalDetailsContent').innerHTML = detailsHtml;
+                document.getElementById('criminalDetailsModal').style.display = 'block';
+            });
+        }
+        
+        function saveFamilyMember() {
+            const criminalId = $('#familyCriminalId').val();
+            const id = $('#familyId').val();
+            const name = $('#familyName').val();
+            const address = $('#familyAddress').val();
+            const relation = $('#familyRelation').val();
+            
+            // Get the image file
+            const familyImageFile = $('#familyImageUpload')[0].files[0];
+            
+            if (!id || !name || !address || !relation) {
+                alert('Please fill all required fields');
+                return;
+            }
+            
+            // Create family member object
+            const familyMember = {
+                criminalId: criminalId,
+                id: id,
+                name: name,
+                address: address,
+                relation: relation,
+                timestamp: firebase.database.ServerValue.TIMESTAMP
+            };
+            
+            // Process image
+            const processImage = () => {
+                return new Promise((resolve) => {
+                    if (familyImageFile) {
+                        const reader = new FileReader();
+                        reader.onload = function(e) {
+                            familyMember.image = e.target.result;
+                            resolve();
+                        };
+                        reader.readAsDataURL(familyImageFile);
+                    } else {
+                        resolve();
+                    }
+                });
+            };
+            
+            processImage().then(() => {
+                // Push the family member to Firebase
+                const newFamilyMemberRef = database.ref('familyMembers').push();
+                newFamilyMemberRef.set(familyMember)
+                    .then(() => {
+                        alert('Family member saved successfully');
+                        // Reload family members
+                        loadFamilyMembers(criminalId);
+                        // Reset form
+                        $('#familyMemberForm')[0].reset();
+                        $('#previewFamilyImage').attr('src', '').hide();
+                        $('#addFamilyImageIcon').show();
+                        $('#familyImageUpload').val('');
+                    })
+                    .catch(error => {
+                        alert('Error saving family member: ' + error.message);
+                    });
+            });
+        }
+        
+        function loadFamilyMembers(criminalId) {
+            database.ref('familyMembers').orderByChild('criminalId').equalTo(criminalId).once('value', snapshot => {
+                familyMembers = [];
+                snapshot.forEach(childSnapshot => {
+                    const member = childSnapshot.val();
+                    member.key = childSnapshot.key;
+                    familyMembers.push(member);
+                });
+                
+                // Sort by relation
+                familyMembers.sort((a, b) => a.relation.localeCompare(b.relation));
+                
+                // Display family members
+                displayFamilyMembers();
+            });
+        }
+        
+        function displayFamilyMembers() {
+            const container = $('#familyMembersList');
+            container.empty();
+            
+            if (familyMembers.length === 0) {
+                container.append('<p style="text-align: center;">No family members found</p>');
+            } else {
+                familyMembers.forEach(member => {
+                    const memberCard = `
+                        <div class="family-member-card">
+                            ${member.image ? 
+                                `<img src="${member.image}" class="family-member-image" onclick="showImage('${member.image}')">` : 
+                                '<i class="fas fa-user family-member-image"></i>'}
+                            <div class="family-member-info">
+                                <strong>${member.name}</strong><br>
+                                ID: ${member.id}<br>
+                                Relation: ${member.relation}<br>
+                                Address: ${member.address}
+                            </div>
+                            <div class="family-member-actions">
+                                <button class="btn btn-view" onclick="editFamilyMember('${member.key}')">
+                                    <i class="fas fa-edit"></i> Edit
+                                </button>
+                                <button class="btn btn-delete" onclick="deleteFamilyMember('${member.key}')">
+                                    <i class="fas fa-trash"></i> Delete
+                                </button>
+                            </div>
+                        </div>
+                    `;
+                    container.append(memberCard);
+                });
+            }
+        }
+        
+        function editFamilyMember(memberKey) {
+            const member = familyMembers.find(m => m.key === memberKey);
+            if (!member) return;
+            
+            // Fill the form with member data
+            $('#familyId').val(member.id);
+            $('#familyName').val(member.name);
+            $('#familyAddress').val(member.address);
+            $('#familyRelation').val(member.relation);
+            
+            if (member.image) {
+                $('#previewFamilyImage').attr('src', member.image).show();
+                $('#addFamilyImageIcon').hide();
+            } else {
+                $('#previewFamilyImage').attr('src', '').hide();
+                $('#addFamilyImageIcon').show();
+            }
+            
+            // Switch to add tab
+            openFamilyTab(null, 'addFamilyTab');
+            
+            // Scroll to form
+            document.getElementById('addFamilyTab').scrollIntoView();
+        }
+        
+        function deleteFamilyMember(memberKey) {
+            if (confirm('Are you sure you want to delete this family member?')) {
+                database.ref('familyMembers').child(memberKey).remove()
+                    .then(() => {
+                        alert('Family member deleted successfully');
+                        // Reload family members
+                        const criminalId = $('#familyCriminalId').val();
+                        loadFamilyMembers(criminalId);
+                    })
+                    .catch(error => {
+                        alert('Error deleting family member: ' + error.message);
+                    });
+            }
+        }
+        
+        function renderFamilyTree() {
+            // This function would render the family tree using D3.js
+            // Implementation would depend on your specific requirements
+            $('#familyTreeContainer').html('<p style="text-align: center;">Family tree visualization would go here</p>');
+        }
+        
+        function downloadFamilyTree() {
+            // This function would download the family tree as an image
+            alert('Family tree download functionality would go here');
+        }
+    </script>
+</body>
+</html>
