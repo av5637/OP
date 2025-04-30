@@ -1,0 +1,735 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Add/Edit Criminal</title>
+    <!-- Firebase SDK -->
+    <script src="https://www.gstatic.com/firebasejs/9.6.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.6.0/firebase-database-compat.js"></script>
+    <style>
+        :root {
+            --primary-color: #3498db;
+            --secondary-color: #2c3e50;
+            --success-color: #2ecc71;
+            --danger-color: #e74c3c;
+            --warning-color: #f39c12;
+            --light-gray: #ecf0f1;
+            --medium-gray: #bdc3c7;
+            --dark-gray: #7f8c8d;
+            --white: #ffffff;
+            --box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+            --border-radius: 8px;
+            --input-border: 1px solid #dfe6e9;
+        }
+        
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+        
+        body {
+            font-family: 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, 'Open Sans', 'Helvetica Neue', sans-serif;
+            line-height: 1.6;
+            color: var(--secondary-color);
+            background-color: #f5f7fa;
+            padding: 0;
+            margin: 0;
+            font-size: 16px;
+        }
+        
+        .container {
+            width: 100%;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        
+        .card {
+            background: var(--white);
+            border-radius: var(--border-radius);
+            box-shadow: var(--box-shadow);
+            padding: 25px;
+            margin-bottom: 20px;
+        }
+        
+        h1 {
+            color: var(--secondary-color);
+            font-size: 1.8rem;
+            margin-bottom: 25px;
+            text-align: center;
+            font-weight: 600;
+            position: relative;
+            padding-bottom: 10px;
+        }
+        
+        h1:after {
+            content: "";
+            position: absolute;
+            bottom: 0;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 80px;
+            height: 3px;
+            background: var(--primary-color);
+            border-radius: 3px;
+        }
+        
+        .form-group {
+            margin-bottom: 20px;
+        }
+        
+        label {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: 600;
+            color: var(--secondary-color);
+            font-size: 0.95rem;
+        }
+        
+        .required:after {
+            content: " *";
+            color: var(--danger-color);
+        }
+        
+        input[type="text"],
+        input[type="number"],
+        input[type="date"],
+        select,
+        textarea {
+            width: 100%;
+            padding: 12px 15px;
+            border: var(--input-border);
+            border-radius: var(--border-radius);
+            font-size: 1rem;
+            transition: all 0.3s ease;
+            background-color: var(--white);
+        }
+        
+        input[type="text"]:focus,
+        input[type="number"]:focus,
+        input[type="date"]:focus,
+        select:focus,
+        textarea:focus {
+            outline: none;
+            border-color: var(--primary-color);
+            box-shadow: 0 0 0 3px rgba(52, 152, 219, 0.2);
+        }
+        
+        textarea {
+            height: 100px;
+            resize: vertical;
+            min-height: 100px;
+        }
+        
+        .photo-upload {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 15px;
+            margin-bottom: 20px;
+        }
+        
+        .photo-preview {
+            width: 150px;
+            height: 150px;
+            border: 2px dashed var(--medium-gray);
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            overflow: hidden;
+            position: relative;
+            background-color: var(--light-gray);
+        }
+        
+        .photo-preview img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+        }
+        
+        .photo-preview span {
+            color: var(--dark-gray);
+            text-align: center;
+            padding: 0 10px;
+        }
+        
+        .photo-upload-control {
+            width: 100%;
+        }
+        
+        .file-input-wrapper {
+            position: relative;
+            overflow: hidden;
+            display: inline-block;
+            width: 100%;
+        }
+        
+        .file-input-wrapper input[type="file"] {
+            font-size: 100px;
+            position: absolute;
+            left: 0;
+            top: 0;
+            opacity: 0;
+            width: 100%;
+            height: 100%;
+            cursor: pointer;
+        }
+        
+        .file-input-button {
+            display: block;
+            padding: 12px 15px;
+            background-color: var(--primary-color);
+            color: white;
+            text-align: center;
+            border-radius: var(--border-radius);
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+        
+        .file-input-button:hover {
+            background-color: #2980b9;
+        }
+        
+        .btn {
+            padding: 12px 25px;
+            border: none;
+            border-radius: var(--border-radius);
+            cursor: pointer;
+            font-size: 1rem;
+            font-weight: 600;
+            transition: all 0.3s ease;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            min-width: 120px;
+        }
+        
+        .btn i {
+            margin-right: 8px;
+        }
+        
+        .btn-submit {
+            background: var(--success-color);
+            color: white;
+        }
+        
+        .btn-submit:hover {
+            background: #27ae60;
+        }
+        
+        .btn-cancel {
+            background: var(--danger-color);
+            color: white;
+        }
+        
+        .btn-cancel:hover {
+            background: #c0392b;
+        }
+        
+        .btn-edit {
+            background: var(--warning-color);
+            color: white;
+        }
+        
+        .btn-edit:hover {
+            background: #d35400;
+        }
+        
+        .btn-group {
+            display: flex;
+            flex-wrap: wrap;
+            justify-content: center;
+            gap: 15px;
+            margin-top: 30px;
+        }
+        
+        .view-mode {
+            background-color: var(--light-gray);
+            padding: 20px;
+            border-radius: var(--border-radius);
+            margin-bottom: 25px;
+        }
+        
+        .view-mode p {
+            margin: 12px 0;
+            padding-bottom: 12px;
+            border-bottom: 1px solid var(--medium-gray);
+        }
+        
+        .view-mode label {
+            font-weight: normal;
+            color: var(--dark-gray);
+            font-size: 0.9rem;
+            display: block;
+            margin-bottom: 5px;
+        }
+        
+        .view-mode .value {
+            font-weight: 600;
+            color: var(--secondary-color);
+            font-size: 1rem;
+            word-break: break-word;
+        }
+        
+        .hidden {
+            display: none;
+        }
+        
+        .age-display {
+            margin-top: 8px;
+            font-size: 0.9rem;
+            color: var(--primary-color);
+            font-weight: 600;
+        }
+        
+        .view-photo {
+            width: 150px;
+            height: 150px;
+            border-radius: 50%;
+            object-fit: cover;
+            border: 3px solid var(--white);
+            box-shadow: var(--box-shadow);
+            margin: 0 auto 20px;
+            display: block;
+        }
+        
+        /* Responsive adjustments */
+        @media (max-width: 768px) {
+            .container {
+                padding: 15px;
+            }
+            
+            .card {
+                padding: 20px;
+            }
+            
+            h1 {
+                font-size: 1.5rem;
+                margin-bottom: 20px;
+            }
+            
+            .btn {
+                padding: 10px 20px;
+                font-size: 0.9rem;
+                min-width: 110px;
+            }
+            
+            .photo-preview {
+                width: 120px;
+                height: 120px;
+            }
+            
+            .view-photo {
+                width: 120px;
+                height: 120px;
+            }
+        }
+        
+        @media (max-width: 480px) {
+            .container {
+                padding: 10px;
+            }
+            
+            .card {
+                padding: 15px;
+            }
+            
+            h1 {
+                font-size: 1.3rem;
+            }
+            
+            .btn-group {
+                flex-direction: column;
+                gap: 10px;
+            }
+            
+            .btn {
+                width: 100%;
+            }
+            
+            input[type="text"],
+            input[type="number"],
+            input[type="date"],
+            select,
+            textarea {
+                padding: 10px 12px;
+            }
+        }
+    </style>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+</head>
+<body>
+    <div class="container">
+        <div class="card">
+            <h1 id="formTitle">Add New Criminal</h1>
+            
+            <div id="viewMode" class="view-mode hidden">
+                <!-- View mode content will be inserted here -->
+            </div>
+            
+            <form id="criminalForm">
+                <input type="hidden" id="criminalId">
+                
+                <div class="form-group photo-upload">
+                    <div class="photo-preview">
+                        <span>No photo selected</span>
+                    </div>
+                    <div class="photo-upload-control">
+                        <label for="image">Photo</label>
+                        <div class="file-input-wrapper">
+                            <button type="button" class="file-input-button">
+                                <i class="fas fa-camera"></i> Choose Photo
+                            </button>
+                            <input type="file" id="image" name="image" accept="image/*">
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="form-group">
+                    <label for="id" class="required">ID Number</label>
+                    <input type="text" id="id" name="id" required placeholder="Enter ID number">
+                </div>
+                
+                <div class="form-group">
+                    <label for="name" class="required">Full Name</label>
+                    <input type="text" id="name" name="name" required placeholder="Enter full name">
+                </div>
+          
+                
+                <div class="form-group">
+                    <label for="address">Permanent Address</label>
+                    <textarea id="address" name="address" placeholder="Enter permanent address"></textarea>
+                </div>
+                
+                <div class="form-group">
+                    <label for="currentAddress">Current Address</label>
+                    <textarea id="currentAddress" name="currentAddress" placeholder="Enter current address if different"></textarea>
+                </div>
+                
+                <div class="form-group">
+                    <label for="dob" class="required">Date of Birth</label>
+                    <input type="date" id="dob" name="dob" required onchange="updateAgeDisplay()">
+                    <div id="ageDisplay" class="age-display"></div>
+                </div>
+
+                      
+                <div class="form-group">
+                    <label for="city" class="required">City</label>
+                    <select id="city" name="city" required>
+                        <option value="">Select City</option>
+                        <option value="Addu City">Addu City</option>
+                        <option value="Fuvamulak City">Fuvamulak City</option>
+                        <option value="Thinadhoo City">Thinadhoo City</option>
+                        <option value="Gdh. Gadhoo">Gdh. Gadhoo</option>
+                        <option value="Ga. Villigili">Ga. Villigili</option>
+                    </select>
+                </div>
+                
+                <div class="form-group">
+                    <label for="group" class="required">Crime Group</label>
+                    <select id="group" name="group" required>
+                        <option value="">Select Group</option>
+                        <option value="LOTHAARI">LOTHAARI</option>
+                        <option value="FORLAND">FORLAND</option>
+                        <option value="SKOOP">SKOOP</option>
+                        <option value="USGANDU">USGANDU</option>
+                        <option value="VISS VISS">VISS VISS</option>
+                        <option value="XEPHIER">XEPHIER</option>
+                        <option value="MYLO">MYLO</option>
+                        <option value="LONA">LONA</option>
+                        <option value="JOALIANS">JOALIANS</option>
+                        <option value="OTF">OTF</option>
+                        <option value="HABEYS">HABEYS</option>
+                        <option value="MASTHU">MASTHU</option>
+                        <option value="VAKKAN">VAKKAN</option>
+                        <option value="OTHERS">OTHERS</option>
+                    </select>
+                </div>
+                
+                <div class="form-group">
+                    <label for="groupPosition">Group Position</label>
+                    <select id="groupPosition" name="groupPosition">
+                        <option value="">Select Position</option>
+                        <option value="Leader">Leader</option>
+                        <option value="Second-in-Command">Second-in-Command</option>
+                        <option value="Enforcer">Enforcer</option>
+                        <option value="Member">Member</option>
+                        <option value="Associate">Associate</option>
+                        <option value="Recruiter">Recruiter</option>
+                        <option value="Financier">Financier</option>
+                        <option value="Other">Other</option>
+                    </select>
+                </div>
+                
+                <div class="form-group">
+                    <label for="status" class="required">Status</label>
+                    <select id="status" name="status" required>
+                        <option value="">Select Status</option>
+                        <option value="Wanted">Wanted</option>
+                        <option value="Active">Active</option>
+                        <option value="InActive">InActive</option>
+                        <option value="Deceased">Deceased</option>
+                        <option value="Arrested">Arrested</option>
+                        <option value="Fugitive">Fugitive</option>
+                    </select>
+                </div>
+                
+                <div class="btn-group">
+                    <button type="button" class="btn btn-cancel" onclick="window.location.href='PersonInteractionEntry.html'">
+                        <i class="fas fa-times"></i> Cancel
+                    </button>
+                    <button type="submit" class="btn btn-submit" id="submitBtn">
+                        <i class="fas fa-save"></i> Save
+                    </button>
+                    <button type="button" class="btn btn-edit hidden" id="editBtn" onclick="enableEdit()">
+                        <i class="fas fa-edit"></i> Edit
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <script>
+      
+     // For Firebase JS SDK v7.20.0 and later, measurementId is optional
+const firebaseConfig = {
+  apiKey: "AIzaSyCqdg6ePdCGvlzHpaEFgOUFPaHEsPYIApw",
+  authDomain: "operationinterectiondata.firebaseapp.com",
+  databaseURL: "https://operationinterectiondata-default-rtdb.firebaseio.com",
+  projectId: "operationinterectiondata",
+  storageBucket: "operationinterectiondata.firebasestorage.app",
+  messagingSenderId: "211887231593",
+  appId: "1:211887231593:web:aac4253ab20803876348f8",
+  measurementId: "G-HSL5TF5FTB"
+};
+
+        // Initialize Firebase
+        firebase.initializeApp(firebaseConfig);
+        const database = firebase.database();
+
+        document.addEventListener('DOMContentLoaded', function() {
+            const urlParams = new URLSearchParams(window.location.search);
+            const editId = urlParams.get('edit');
+            const viewId = urlParams.get('view');
+            
+            // Image preview functionality
+            document.getElementById('image').addEventListener('change', function(e) {
+                const file = e.target.files[0];
+                if (file) {
+                    const reader = new FileReader();
+                    reader.onload = function(event) {
+                        const preview = document.querySelector('.photo-preview');
+                        preview.innerHTML = `<img src="${event.target.result}" alt="Preview">`;
+                    };
+                    reader.readAsDataURL(file);
+                }
+            });
+            
+            if (viewId) {
+                setupViewMode(viewId);
+            } else if (editId) {
+                setupEditMode(editId);
+            }
+            
+            // Form submission
+            document.getElementById('criminalForm').addEventListener('submit', function(e) {
+                e.preventDefault();
+                saveCriminal();
+            });
+        });
+        
+        function setupViewMode(id) {
+            document.getElementById('formTitle').textContent = 'Criminal Details';
+            document.getElementById('criminalForm').classList.add('hidden');
+            document.getElementById('viewMode').classList.remove('hidden');
+            document.getElementById('editBtn').classList.remove('hidden');
+            document.getElementById('submitBtn').classList.add('hidden');
+            
+            database.ref('criminals').orderByChild('id').equalTo(id).once('value', (snapshot) => {
+                const criminal = snapshot.val() ? Object.values(snapshot.val())[0] : null;
+                
+                if (criminal) {
+                    const age = calculateAgeFromDOB(criminal.dob);
+                    const viewMode = document.getElementById('viewMode');
+                    let html = `
+                        <img src="${criminal.image || 'https://via.placeholder.com/150'}" class="view-photo" alt="Photo">
+                        <p><label>ID Number:</label> <span class="value">${criminal.id || 'N/A'}</span></p>
+                        <p><label>Full Name:</label> <span class="value">${criminal.name || 'N/A'}</span></p>
+                        <p><label>City:</label> <span class="value">${criminal.city || 'N/A'}</span></p>
+                        <p><label>Permanent Address:</label> <span class="value">${criminal.address || 'N/A'}</span></p>
+                        <p><label>Current Address:</label> <span class="value">${criminal.currentAddress || 'N/A'}</span></p>
+                        <p><label>Date of Birth:</label> <span class="value">${formatDate(criminal.dob)} (Age: ${age !== 'N/A' ? age : 'N/A'})</span></p>
+                        <p><label>Crime Group:</label> <span class="value">${criminal.group || 'N/A'}</span></p>
+                        <p><label>Group Position:</label> <span class="value">${criminal.groupPosition || 'N/A'}</span></p>
+                        <p><label>Status:</label> <span class="value">${criminal.status || 'N/A'}</span></p>
+                    `;
+                    viewMode.innerHTML = html;
+                    
+                    // Store the criminal ID for editing
+                    document.getElementById('criminalId').value = id;
+                }
+            });
+        }
+        
+        function setupEditMode(id) {
+            document.getElementById('formTitle').textContent = 'Edit Criminal Record';
+            
+            database.ref('criminals').orderByChild('id').equalTo(id).once('value', (snapshot) => {
+                const criminal = snapshot.val() ? Object.values(snapshot.val())[0] : null;
+                
+                if (criminal) {
+                    document.getElementById('criminalId').value = id;
+                    document.getElementById('id').value = criminal.id || '';
+                    document.getElementById('name').value = criminal.name || '';
+                    document.getElementById('city').value = criminal.city || '';
+                    document.getElementById('address').value = criminal.address || '';
+                    document.getElementById('currentAddress').value = criminal.currentAddress || '';
+                    document.getElementById('dob').value = criminal.dob || '';
+                    document.getElementById('group').value = criminal.group || '';
+                    document.getElementById('groupPosition').value = criminal.groupPosition || '';
+                    document.getElementById('status').value = criminal.status || '';
+                    
+                    if (criminal.image) {
+                        const preview = document.querySelector('.photo-preview');
+                        preview.innerHTML = `<img src="${criminal.image}" alt="Preview">`;
+                    }
+                    
+                    updateAgeDisplay();
+                }
+            });
+        }
+        
+        function enableEdit() {
+            document.getElementById('criminalForm').classList.remove('hidden');
+            document.getElementById('viewMode').classList.add('hidden');
+            document.getElementById('editBtn').classList.add('hidden');
+            document.getElementById('submitBtn').classList.remove('hidden');
+        }
+        
+        function formatDate(dateString) {
+            if (!dateString) return 'N/A';
+            const date = new Date(dateString);
+            return date.toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' });
+        }
+        
+        function calculateAgeFromDOB(dob) {
+            if (!dob) return 'N/A';
+            const birthDate = new Date(dob);
+            const today = new Date();
+            let age = today.getFullYear() - birthDate.getFullYear();
+            const monthDiff = today.getMonth() - birthDate.getMonth();
+            
+            if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < birthDate.getDate())) {
+                age--;
+            }
+            
+            return age;
+        }
+        
+        function updateAgeDisplay() {
+            const dob = document.getElementById('dob').value;
+            const age = calculateAgeFromDOB(dob);
+            const ageDisplay = document.getElementById('ageDisplay');
+            
+            if (age !== 'N/A') {
+                ageDisplay.textContent = `Age: ${age} years`;
+            } else {
+                ageDisplay.textContent = '';
+            }
+        }
+        
+        function saveCriminal() {
+            const criminalId = document.getElementById('criminalId').value;
+            const id = document.getElementById('id').value;
+            const name = document.getElementById('name').value;
+            const city = document.getElementById('city').value;
+            const address = document.getElementById('address').value;
+            const currentAddress = document.getElementById('currentAddress').value;
+            const dob = document.getElementById('dob').value;
+            const group = document.getElementById('group').value;
+            const groupPosition = document.getElementById('groupPosition').value;
+            const status = document.getElementById('status').value;
+            
+            // Validate required fields
+            if (!id || !name || !city || !dob || !group || !status) {
+                alert('Please fill all required fields');
+                return;
+            }
+            
+            // Get image (as base64)
+            const imageInput = document.getElementById('image');
+            let image = '';
+            if (imageInput.files.length > 0) {
+                const file = imageInput.files[0];
+                const reader = new FileReader();
+                reader.onload = function(event) {
+                    image = event.target.result;
+                    saveToFirebase();
+                };
+                reader.readAsDataURL(file);
+            } else {
+                // If editing and no new image selected, keep the existing one
+                if (criminalId) {
+                    database.ref('criminals').orderByChild('id').equalTo(criminalId).once('value', (snapshot) => {
+                        const existingCriminal = snapshot.val() ? Object.values(snapshot.val())[0] : null;
+                        if (existingCriminal && existingCriminal.image) {
+                            image = existingCriminal.image;
+                        }
+                        saveToFirebase();
+                    });
+                } else {
+                    saveToFirebase();
+                }
+            }
+            
+            function saveToFirebase() {
+                const criminalData = {
+                    id,
+                    name,
+                    city,
+                    address,
+                    currentAddress,
+                    dob,
+                    group,
+                    groupPosition,
+                    status,
+                    image,
+                    lastUpdated: new Date().toISOString()
+                };
+                
+                if (criminalId) {
+                    // Update existing record
+                    database.ref('criminals').orderByChild('id').equalTo(criminalId).once('value', (snapshot) => {
+                        snapshot.forEach(child => {
+                            child.ref.update(criminalData)
+                                .then(() => {
+                                    alert('Record updated successfully!');
+                                    window.location.href = 'Findex.html';
+                                })
+                                .catch(error => {
+                                    alert('Error updating record: ' + error.message);
+                                });
+                        });
+                    });
+                } else {
+                    // Add new record
+                    const newRecordRef = database.ref('criminals').push();
+                    criminalData.createdAt = new Date().toISOString();
+                    newRecordRef.set(criminalData)
+                        .then(() => {
+                            alert('Record added successfully!');
+                            window.location.href = 'Findex.html';
+                        })
+                        .catch(error => {
+                            alert('Error adding record: ' + error.message);
+                        });
+                }
+            }
+        }
+    </script>
+</body>
+</html>
