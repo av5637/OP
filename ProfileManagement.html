@@ -1,0 +1,2723 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Criminal Profile Management</title>
+    <!-- Firebase SDK -->
+    <script src="https://www.gstatic.com/firebasejs/9.6.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.6.0/firebase-database-compat.js"></script>
+    <!-- DataTables CSS -->
+    <link rel="stylesheet" type="text/css" href="https://cdn.datatables.net/1.11.5/css/jquery.dataTables.css">
+    <!-- Font Awesome for icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <!-- jsPDF for PDF generation -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.25/jspdf.plugin.autotable.min.js"></script>
+    <!-- QR Code Generator -->
+    <script src="https://cdn.jsdelivr.net/npm/qrcode-generator@1.4.4/qrcode.min.js"></script>
+    <style>
+        * {
+            box-sizing: border-box;
+        }
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            margin: 0;
+            padding: 10px;
+            background-color: #f5f5f5;
+            font-size: 14px;
+        }
+        .container {
+            max-width: 100%;
+            margin: 0 auto;
+            background: white;
+            padding: 15px;
+            border-radius: 8px;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+        }
+        h1 {
+            color: #2c3e50;
+            margin-bottom: 15px;
+            font-size: 1.5rem;
+            text-align: center;
+        }
+        .btn {
+            padding: 8px 12px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 14px;
+            font-weight: 600;
+            text-decoration: none;
+            display: inline-block;
+            margin-bottom: 15px;
+            transition: all 0.3s;
+        }
+        .btn:hover {
+            opacity: 0.9;
+            transform: translateY(-1px);
+        }
+        .btn-add {
+            background: #2ecc71;
+            color: white;
+        }
+        .btn-view {
+            background: #9b59b6;
+            color: white;
+            padding: 5px 8px;
+            font-size: 12px;
+        }
+        .btn-delete {
+            background: #e74c3c;
+            color: white;
+            padding: 5px 8px;
+            font-size: 12px;
+        }
+        .btn-interaction {
+            background: #f39c12;
+            color: white;
+            padding: 5px 8px;
+            font-size: 12px;
+        }
+        .btn-profile {
+            background: #3498db;
+            color: white;
+            padding: 5px 8px;
+            font-size: 12px;
+        }
+        .btn-export {
+            background: #16a085;
+            color: white;
+            padding: 5px 8px;
+            font-size: 12px;
+        }
+        .photo-thumbnail {
+            width: 50px;
+            height: 50px;
+            border-radius: 4px;
+            object-fit: cover;
+            cursor: pointer;
+            transition: transform 0.2s;
+        }
+        .photo-thumbnail:hover {
+            transform: scale(1.5);
+        }
+        .status-wanted {
+            color: #e74c3c;
+            font-weight: bold;
+        }
+        .status-active {
+            color: #f39c12;
+            font-weight: bold;
+        }
+        .status-inactive {
+            color: #2ecc71;
+            font-weight: bold;
+        }
+        .status-deceased {
+            color: #7f8c8d;
+            font-weight: bold;
+        }
+        .status-arrested {
+            color: #3498db;
+            font-weight: bold;
+        }
+        .status-fugitive {
+            color: #9b59b6;
+            font-weight: bold;
+        }
+        .action-buttons {
+            display: flex;
+            gap: 5px;
+            flex-wrap: wrap;
+        }
+        /* Modal styles */
+        .modal {
+            display: none;
+            position: fixed;
+            z-index: 1000;
+            left: 0;
+            top: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0,0,0,0.8);
+            overflow: auto;
+        }
+        .modal-content {
+            background-color: #fefefe;
+            margin: 5% auto;
+            padding: 20px;
+            border-radius: 8px;
+            width: 80%;
+            max-width: 1000px;
+            box-shadow: 0 4px 8px rgba(0,0,0,0.2);
+            max-height: 90vh;
+            overflow-y: auto;
+        }
+        .modal-image-container {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100%;
+        }
+        .modal-image {
+            max-width: 90%;
+            max-height: 90%;
+            object-fit: contain;
+        }
+        .close {
+            color: #aaa;
+            float: right;
+            font-size: 28px;
+            font-weight: bold;
+            cursor: pointer;
+        }
+        .close:hover {
+            color: black;
+        }
+        /* Form styles */
+        .form-group {
+            margin-bottom: 15px;
+        }
+        .form-group label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: 600;
+        }
+        .form-control {
+            width: 100%;
+            padding: 8px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            font-size: 14px;
+        }
+        .form-control:focus {
+            border-color: #3498db;
+            outline: none;
+            box-shadow: 0 0 5px rgba(52,152,219,0.5);
+        }
+        .form-row {
+            display: flex;
+            gap: 15px;
+            margin-bottom: 15px;
+        }
+        .form-col {
+            flex: 1;
+        }
+        .btn-submit {
+            background: #2ecc71;
+            color: white;
+            width: 100%;
+            padding: 10px;
+            font-size: 16px;
+        }
+        .btn-cancel {
+            background: #95a5a6;
+            color: white;
+            width: 100%;
+            padding: 10px;
+            font-size: 16px;
+            margin-top: 10px;
+        }
+        /* Image upload styles */
+        .image-upload-container {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            margin-bottom: 15px;
+        }
+        .image-preview {
+            width: 150px;
+            height: 150px;
+            border: 2px dashed #ddd;
+            border-radius: 8px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            overflow: hidden;
+            margin-bottom: 10px;
+            position: relative;
+        }
+        .image-preview img {
+            max-width: 100%;
+            max-height: 100%;
+            object-fit: cover;
+        }
+        .upload-btn {
+            background: #3498db;
+            color: white;
+            padding: 8px 15px;
+            border-radius: 4px;
+            cursor: pointer;
+            display: inline-block;
+        }
+        .upload-btn input {
+            display: none;
+        }
+        .add-image-icon {
+            font-size: 40px;
+            color: #95a5a6;
+            cursor: pointer;
+        }
+        /* Tabs */
+        .tab-container {
+            margin-top: 20px;
+        }
+        .tab-buttons {
+            display: flex;
+            border-bottom: 1px solid #ddd;
+            flex-wrap: wrap;
+        }
+        .tab-button {
+            padding: 10px 20px;
+            background: #f1f1f1;
+            border: none;
+            cursor: pointer;
+            font-weight: 600;
+            margin-right: 5px;
+            border-radius: 5px 5px 0 0;
+        }
+        .tab-button.active {
+            background: #3498db;
+            color: white;
+        }
+        .tab-content {
+            display: none;
+            padding: 15px;
+            border: 1px solid #ddd;
+            border-top: none;
+            border-radius: 0 0 5px 5px;
+        }
+        .tab-content.active {
+            display: block;
+        }
+        /* Section styling */
+        .section {
+            background-color: #f9f9f9;
+            padding: 15px;
+            border-radius: 5px;
+            margin-bottom: 15px;
+        }
+        .section-title {
+            font-weight: bold;
+            margin-bottom: 10px;
+            color: #2c3e50;
+            border-bottom: 1px solid #ddd;
+            padding-bottom: 5px;
+        }
+        /* Table styles */
+        .details-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-bottom: 20px;
+        }
+        .details-table th, .details-table td {
+            padding: 10px;
+            border: 1px solid #ddd;
+            vertical-align: top;
+        }
+        .details-table th {
+            background-color: #f2f2f2;
+            width: 30%;
+        }
+        /* Add/remove buttons */
+        .add-item-btn {
+            background: #2ecc71;
+            color: white;
+            padding: 5px 10px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            margin-bottom: 10px;
+        }
+        .remove-item-btn {
+            background: #e74c3c;
+            color: white;
+            padding: 2px 5px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            margin-left: 5px;
+        }
+        /* Item lists */
+        .item-list {
+            margin-bottom: 15px;
+        }
+        .item-card {
+            background: white;
+            padding: 10px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            margin-bottom: 10px;
+            position: relative;
+        }
+        /* QR Code */
+        .qr-code-container {
+            display: flex;
+            justify-content: center;
+            margin: 15px 0;
+        }
+        .qr-code {
+            width: 150px;
+            height: 150px;
+            border: 1px solid #ddd;
+            padding: 5px;
+            background: white;
+        }
+        /* Social media links */
+        .social-media-container {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+            margin-bottom: 15px;
+        }
+        .social-media-item {
+            display: flex;
+            align-items: center;
+            background: #f0f0f0;
+            padding: 5px 10px;
+            border-radius: 4px;
+        }
+        /* Export options */
+        .export-options {
+            margin: 20px 0;
+            padding: 15px;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+            background-color: #f9f9f9;
+        }
+        .export-checkbox {
+            margin: 10px 0;
+        }
+        .export-checkbox label {
+            margin-left: 5px;
+        }
+        /* Profile report */
+        .profile-header {
+            display: flex;
+            align-items: center;
+            margin-bottom: 20px;
+            padding-bottom: 20px;
+            border-bottom: 1px solid #ddd;
+        }
+        .profile-image {
+            width: 120px;
+            height: 120px;
+            border-radius: 4px;
+            object-fit: cover;
+            margin-right: 20px;
+        }
+        .profile-info {
+            flex: 1;
+        }
+        .profile-name {
+            font-size: 24px;
+            margin: 0 0 5px 0;
+            color: #2c3e50;
+        }
+        .profile-id {
+            font-size: 16px;
+            color: #7f8c8d;
+            margin: 0 0 10px 0;
+        }
+        .profile-status {
+            display: inline-block;
+            padding: 3px 8px;
+            border-radius: 4px;
+            font-weight: bold;
+            font-size: 12px;
+        }
+        .profile-section {
+            margin-bottom: 30px;
+        }
+        .profile-section-title {
+            font-size: 18px;
+            color: #2c3e50;
+            border-bottom: 1px solid #ddd;
+            padding-bottom: 5px;
+            margin-bottom: 15px;
+        }
+        .profile-subsection {
+            margin-bottom: 15px;
+        }
+        .profile-subsection-title {
+            font-size: 16px;
+            color: #3498db;
+            margin-bottom: 10px;
+        }
+        .profile-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
+            gap: 15px;
+        }
+        .profile-grid-item {
+            background: #f9f9f9;
+            padding: 10px;
+            border-radius: 4px;
+        }
+        .profile-label {
+            font-weight: bold;
+            color: #7f8c8d;
+            font-size: 12px;
+            margin-bottom: 3px;
+        }
+        .profile-value {
+            font-size: 14px;
+        }
+        .profile-asset-image {
+            width: 100px;
+            height: 100px;
+            object-fit: cover;
+            border-radius: 4px;
+            margin-right: 10px;
+            margin-bottom: 10px;
+        }
+        /* Filter controls */
+        .filter-container {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+            margin-bottom: 15px;
+            padding: 10px;
+            background: #f0f0f0;
+            border-radius: 5px;
+        }
+        .filter-group {
+            flex: 1;
+            min-width: 200px;
+        }
+        .filter-group label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: 600;
+            font-size: 13px;
+        }
+        .filter-group select, 
+        .filter-group input {
+            width: 100%;
+            padding: 8px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            font-size: 14px;
+        }
+        .filter-group button {
+            width: 100%;
+            padding: 8px;
+            background: #3498db;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+        }
+        @media (max-width: 768px) {
+            .modal-content {
+                width: 95%;
+                margin: 10px auto;
+                padding: 10px;
+            }
+            .action-buttons {
+                flex-direction: column;
+            }
+            .btn-view, .btn-delete, .btn-interaction, .btn-profile {
+                width: 100%;
+                margin: 2px 0;
+            }
+            .details-table th, .details-table td {
+                display: block;
+                width: 100%;
+            }
+            .details-table th {
+                background-color: transparent;
+                border-bottom: none;
+                padding-bottom: 0;
+            }
+            .details-table td {
+                padding-top: 5px;
+            }
+            .form-row {
+                flex-direction: column;
+            }
+            .profile-header {
+                flex-direction: column;
+                text-align: center;
+            }
+            .profile-image {
+                margin-right: 0;
+                margin-bottom: 15px;
+            }
+            .filter-container {
+                flex-direction: column;
+            }
+            .filter-group {
+                min-width: 100%;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Criminal Profile Management</h1>
+        
+        <!-- Filter Controls -->
+        <div class="filter-container">
+            <div class="filter-group">
+                <label for="filterGroup">Filter by Group</label>
+                <select id="filterGroup" class="form-control">
+                    <option value="">All Groups</option>
+                    <option value="LOTHAARI">LOTHAARI</option>
+                    <option value="FORLAND">FORLAND</option>
+                    <option value="SKOOP">SKOOP</option>
+                    <option value="USGANDU">USGANDU</option>
+                    <option value="VISS VISS">VISS VISS</option>
+                    <option value="XEPHIER">XEPHIER</option>
+                    <option value="MYLO">MYLO</option>
+                    <option value="LONA">LONA</option>
+                    <option value="JOALIANS">JOALIANS</option>
+                    <option value="OTF">OTF</option>
+                    <option value="HABEYS">HABEYS</option>
+                    <option value="MASTHU">MASTHU</option>
+                    <option value="VAKKAN">VAKKAN</option>
+                    <option value="OTHERS">OTHERS</option>
+                </select>
+            </div>
+            
+            <div class="filter-group">
+                <label for="filterCity">Filter by City</label>
+                <select id="filterCity" class="form-control">
+                    <option value="">All Cities</option>
+                    <option value="Addu City">Addu City</option>
+                    <option value="Fuvamulak City">Fuvamulak City</option>
+                    <option value="Thinadhoo City">Thinadhoo City</option>
+                    <option value="Gdh. Gadhoo">Gdh. Gadhoo</option>
+                    <option value="Ga. Villigili">Ga. Villigili</option>
+                </select>
+            </div>
+            
+            <div class="filter-group">
+                <label for="filterStatus">Filter by Status</label>
+                <select id="filterStatus" class="form-control">
+                    <option value="">All Statuses</option>
+                    <option value="Wanted">Wanted</option>
+                    <option value="Active">Active</option>
+                    <option value="InActive">InActive</option>
+                    <option value="Deceased">Deceased</option>
+                    <option value="Arrested">Arrested</option>
+                    <option value="Fugitive">Fugitive</option>
+                </select>
+            </div>
+            
+            <div class="filter-group">
+                <label for="filterSearch">Search (ID or Name)</label>
+                <input type="text" id="filterSearch" class="form-control" placeholder="Enter ID or name">
+            </div>
+            
+            <div class="filter-group">
+                <label>&nbsp;</label>
+                <button id="resetFilters" class="btn">Reset Filters</button>
+            </div>
+        </div>
+        
+        <table id="criminalsTable" class="display" style="width:100%">
+            <thead>
+                <tr>
+                    <th>Photo</th>
+                    <th>ID</th>
+                    <th>Name</th>
+                    <th>City</th>
+                    <th>Group</th>
+                    <th>Position</th>
+                    <th>Status</th>
+                    <th>Age</th>
+                    <th>Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+                <!-- Data will be loaded here -->
+            </tbody>
+        </table>
+    </div>
+
+    <!-- Image Preview Modal -->
+    <div id="imageModal" class="modal">
+        <div class="modal-content">
+            <span class="close">&times;</span>
+            <div class="modal-image-container">
+                <img id="modalImage" class="modal-image" src="">
+            </div>
+        </div>
+    </div>
+
+    <!-- Profile Modal -->
+    <div id="profileModal" class="modal">
+        <div class="modal-content">
+            <span class="close" onclick="closeProfileModal()">&times;</span>
+            <h2 id="profileModalTitle">Profile Details</h2>
+            
+            <div class="tab-container">
+                <div class="tab-buttons">
+                    <button class="tab-button active" onclick="openProfileTab(event, 'editProfileTab')">Edit Profile</button>
+                    <button class="tab-button" onclick="openProfileTab(event, 'viewProfileTab')">View Profile</button>
+                </div>
+                
+                <div id="editProfileTab" class="tab-content active">
+                    <form id="profileForm">
+                        <input type="hidden" id="profileCriminalId">
+                        
+                        <div class="form-row">
+                            <div class="form-col">
+                                <div class="image-upload-container">
+                                    <div class="image-preview" id="profileImagePreview">
+                                        <i class="fas fa-user add-image-icon" id="addProfileImageIcon"></i>
+                                        <img id="previewProfileImage" style="display: none;">
+                                    </div>
+                                    <label class="upload-btn">
+                                        <input type="file" id="profileImageUpload" accept="image/*">
+                                        Add Profile Image
+                                    </label>
+                                </div>
+                                
+                                <div class="form-group">
+                                    <label for="qrCodeText">QR Code Text</label>
+                                    <input type="text" id="qrCodeText" class="form-control">
+                                    <div class="qr-code-container">
+                                        <div id="qrCode"></div>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <div class="form-col">
+                                <div class="form-group">
+                                    <label for="profileId">ID Card No.*</label>
+                                    <input type="text" id="profileId" class="form-control" required>
+                                </div>
+                                
+                                <div class="form-group">
+                                    <label for="profileName">Full Name*</label>
+                                    <input type="text" id="profileName" class="form-control" required>
+                                </div>
+                                
+                                <div class="form-group">
+                                    <label for="commonName">Common Name</label>
+                                    <input type="text" id="commonName" class="form-control">
+                                </div>
+                                
+                                <div class="form-group">
+                                    <label for="profileCity">City*</label>
+                                    <select id="profileCity" class="form-control" required>
+                                        <option value="">Select City</option>
+                                        <option value="Addu City">Addu City</option>
+                                        <option value="Fuvamulak City">Fuvamulak City</option>
+                                        <option value="Thinadhoo City">Thinadhoo City</option>
+                                        <option value="Gdh. Gadhoo">Gdh. Gadhoo</option>
+                                        <option value="Ga. Villigili">Ga. Villigili</option>
+                                    </select>
+                                </div>
+                                
+                                <div class="form-group">
+                                    <label for="profileGroup">Group*</label>
+                                    <select id="profileGroup" class="form-control" required>
+                                        <option value="">Select Group</option>
+                                        <option value="LOTHAARI">LOTHAARI</option>
+                                        <option value="FORLAND">FORLAND</option>
+                                        <option value="SKOOP">SKOOP</option>
+                                        <option value="USGANDU">USGANDU</option>
+                                        <option value="VISS VISS">VISS VISS</option>
+                                        <option value="XEPHIER">XEPHIER</option>
+                                        <option value="MYLO">MYLO</option>
+                                        <option value="LONA">LONA</option>
+                                        <option value="JOALIANS">JOALIANS</option>
+                                        <option value="OTF">OTF</option>
+                                        <option value="HABEYS">HABEYS</option>
+                                        <option value="MASTHU">MASTHU</option>
+                                        <option value="VAKKAN">VAKKAN</option>
+                                        <option value="OTHERS">OTHERS</option>
+                                    </select>
+                                </div>
+                                
+                                <div class="form-group">
+                                    <label for="profilePosition">Position</label>
+                                    <select id="profilePosition" class="form-control">
+                                        <option value="">Select Position</option>
+                                        <option value="Leader">Leader</option>
+                                        <option value="Second-in-Command">Second-in-Command</option>
+                                        <option value="Enforcer">Enforcer</option>
+                                        <option value="Member">Member</option>
+                                        <option value="Associate">Associate</option>
+                                        <option value="Recruiter">Recruiter</option>
+                                        <option value="Financier">Financier</option>
+                                        <option value="Other">Other</option>
+                                    </select>
+                                </div>
+                                
+                                <div class="form-group">
+                                    <label for="profileStatus">Status*</label>
+                                    <select id="profileStatus" class="form-control" required>
+                                        <option value="">Select status</option>
+                                        <option value="Wanted">Wanted</option>
+                                        <option value="Active">Active</option>
+                                        <option value="InActive">InActive</option>
+                                        <option value="Deceased">Deceased</option>
+                                        <option value="Arrested">Arrested</option>
+                                        <option value="Fugitive">Fugitive</option>
+                                    </select>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <!-- Personal Information Section -->
+                        <div class="section">
+                            <div class="section-title">Personal Information</div>
+                            
+                            <div class="form-row">
+                                <div class="form-col">
+                                    <div class="form-group">
+                                        <label for="dob">Date of Birth*</label>
+                                        <input type="date" id="dob" class="form-control" required>
+                                    </div>
+                                    
+                                    <div class="form-group">
+                                        <label for="address">Address*</label>
+                                        <textarea id="address" class="form-control" rows="3" required></textarea>
+                                    </div>
+                                    
+                                    <div class="form-group">
+                                        <label for="currentAddress">Current Address*</label>
+                                        <textarea id="currentAddress" class="form-control" rows="3" required></textarea>
+                                    </div>
+                                </div>
+                                
+                                <div class="form-col">
+                                    <div class="form-group">
+                                        <label for="contact">Recent Contact*</label>
+                                        <input type="text" id="contact" class="form-control" required>
+                                    </div>
+                                    
+                                    <div class="form-group">
+                                        <label for="maritalStatus">Marital Status</label>
+                                        <select id="maritalStatus" class="form-control">
+                                            <option value="">Select status</option>
+                                            <option value="Single">Single</option>
+                                            <option value="Married">Married</option>
+                                            <option value="Divorced">Divorced</option>
+                                            <option value="Widowed">Widowed</option>
+                                        </select>
+                                    </div>
+                                    
+                                    <div class="form-group">
+                                        <label for="sex">Sex</label>
+                                        <select id="sex" class="form-control">
+                                            <option value="">Select sex</option>
+                                            <option value="Male">Male</option>
+                                            <option value="Female">Female</option>
+                                            <option value="Other">Other</option>
+                                        </select>
+                                    </div>
+                                    
+                                    <div class="form-group">
+                                        <label for="licenseNo">License Number</label>
+                                        <input type="text" id="licenseNo" class="form-control">
+                                    </div>
+                                    
+                                    <div class="form-group">
+                                        <label for="passportNo">Passport Number</label>
+                                        <input type="text" id="passportNo" class="form-control">
+                                    </div>
+                                    
+                                    <div class="form-group">
+                                        <label for="email">Email</label>
+                                        <input type="email" id="email" class="form-control">
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <div class="form-group">
+                                <label for="description">Description/Notes</label>
+                                <textarea id="description" class="form-control" rows="3"></textarea>
+                            </div>
+                        </div>
+                        
+                        <!-- Employment Information Section -->
+                        <div class="section">
+                            <div class="section-title">Employment Information</div>
+                            
+                            <div class="form-group">
+                                <label for="jobStatus">Job Status</label>
+                                <select id="jobStatus" class="form-control">
+                                    <option value="">Select status</option>
+                                    <option value="Employed">Employed</option>
+                                    <option value="Unemployed">Unemployed</option>
+                                    <option value="Self-employed">Self-employed</option>
+                                    <option value="Student">Student</option>
+                                    <option value="Retired">Retired</option>
+                                </select>
+                            </div>
+                            
+                            <div class="form-group">
+                                <label for="currentJob">Current/Most Recent Job</label>
+                                <input type="text" id="currentJob" class="form-control">
+                            </div>
+                            
+                            <div class="form-group">
+                                <label for="jobDate">Job Date</label>
+                                <input type="date" id="jobDate" class="form-control">
+                            </div>
+                            
+                            <div class="form-group">
+                                <label for="medicalHistory">Medical History</label>
+                                <textarea id="medicalHistory" class="form-control" rows="3"></textarea>
+                            </div>
+                            
+                            <div class="form-group">
+                                <label for="hobby">Hobby</label>
+                                <input type="text" id="hobby" class="form-control">
+                            </div>
+                            
+                            <div class="form-group">
+                                <label for="mo">MO (Modus Operandi)</label>
+                                <textarea id="mo" class="form-control" rows="3"></textarea>
+                            </div>
+                        </div>
+                        
+                        <!-- Social Media Section -->
+                        <div class="section">
+                            <div class="section-title">Social Media Profiles</div>
+                            <div id="socialMediaList" class="item-list">
+                                <!-- Social media items will be added here -->
+                            </div>
+                            <button type="button" class="add-item-btn" onclick="addSocialMedia()">Add Social Media</button>
+                        </div>
+                        
+                        <!-- Travel History Section -->
+                        <div class="section">
+                            <div class="section-title">Travel History</div>
+                            <div id="travelHistoryList" class="item-list">
+                                <!-- Travel history items will be added here -->
+                            </div>
+                            <button type="button" class="add-item-btn" onclick="addTravelHistory()">Add Travel History</button>
+                        </div>
+                        
+                        <!-- Business Information Section -->
+                        <div class="section">
+                            <div class="section-title">Business Information</div>
+                            <div id="businessList" class="item-list">
+                                <!-- Business items will be added here -->
+                            </div>
+                            <button type="button" class="add-item-btn" onclick="addBusiness()">Add Business</button>
+                        </div>
+                        
+                        <!-- Bank Accounts Section -->
+                        <div class="section">
+                            <div class="section-title">Bank Accounts</div>
+                            <div id="bankList" class="item-list">
+                                <!-- Bank items will be added here -->
+                            </div>
+                            <button type="button" class="add-item-btn" onclick="addBankAccount()">Add Bank Account</button>
+                        </div>
+                        
+                        <!-- Source of Income Section -->
+                        <div class="section">
+                            <div class="section-title">Source of Income</div>
+                            <div class="form-group">
+                                <label for="incomeSource">Primary Source of Income</label>
+                                <input type="text" id="incomeSource" class="form-control">
+                            </div>
+                            <div class="form-group">
+                                <label for="otherIncomeSources">Other Income Sources</label>
+                                <textarea id="otherIncomeSources" class="form-control" rows="3"></textarea>
+                            </div>
+                        </div>
+                        
+                        <!-- Asset Information Section -->
+                        <div class="section">
+                            <div class="section-title">Asset Information</div>
+                            <div id="assetList" class="item-list">
+                                <!-- Asset items will be added here -->
+                            </div>
+                            <button type="button" class="add-item-btn" onclick="addAsset()">Add Asset</button>
+                        </div>
+                        
+                        <button type="submit" class="btn btn-submit">Save Profile</button>
+                        <button type="button" class="btn btn-cancel" onclick="closeProfileModal()">Cancel</button>
+                    </form>
+                </div>
+                
+                <div id="viewProfileTab" class="tab-content">
+                    <div id="profileContent">
+                        <!-- Profile will be displayed here -->
+                    </div>
+                    
+                    <div class="export-options">
+                        <h4>Export Options</h4>
+                        <div class="export-checkbox">
+                            <input type="checkbox" id="exportPersonalInfo" checked>
+                            <label for="exportPersonalInfo">Personal Information</label>
+                        </div>
+                        <div class="export-checkbox">
+                            <input type="checkbox" id="exportEmploymentInfo" checked>
+                            <label for="exportEmploymentInfo">Employment Information</label>
+                        </div>
+                        <div class="export-checkbox">
+                            <input type="checkbox" id="exportSocialMedia" checked>
+                            <label for="exportSocialMedia">Social Media</label>
+                        </div>
+                        <div class="export-checkbox">
+                            <input type="checkbox" id="exportTravelHistory" checked>
+                            <label for="exportTravelHistory">Travel History</label>
+                        </div>
+                        <div class="export-checkbox">
+                            <input type="checkbox" id="exportBusinessInfo" checked>
+                            <label for="exportBusinessInfo">Business Information</label>
+                        </div>
+                        <div class="export-checkbox">
+                            <input type="checkbox" id="exportBankInfo" checked>
+                            <label for="exportBankInfo">Bank Accounts</label>
+                        </div>
+                        <div class="export-checkbox">
+                            <input type="checkbox" id="exportAssetInfo" checked>
+                            <label for="exportAssetInfo">Asset Information</label>
+                        </div>
+                        <button class="btn btn-export" onclick="exportProfileToPDF()">Export to PDF</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- jQuery and DataTables JS -->
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <script src="https://cdn.datatables.net/1.11.5/js/jquery.dataTables.js"></script>
+    
+    <script>
+        // Initialize jsPDF
+        const { jsPDF } = window.jspdf;
+        
+        // For Firebase JS SDK v7.20.0 and later, measurementId is optional
+        const firebaseConfig = {
+          apiKey: "AIzaSyCqdg6ePdCGvlzHpaEFgOUFPaHEsPYIApw",
+          authDomain: "operationinterectiondata.firebaseapp.com",
+          databaseURL: "https://operationinterectiondata-default-rtdb.firebaseio.com",
+          projectId: "operationinterectiondata",
+          storageBucket: "operationinterectiondata.firebasestorage.app",
+          messagingSenderId: "211887231593",
+          appId: "1:211887231593:web:aac4253ab20803876348f8",
+          measurementId: "G-HSL5TF5FTB"
+        };
+
+        // Initialize Firebase
+        firebase.initializeApp(firebaseConfig);
+        const database = firebase.database();
+        
+        // Global variables
+        let currentCriminalId = null;
+        let currentCriminalDetails = null;
+        let socialMediaItems = [];
+        let travelHistoryItems = [];
+        let businessItems = [];
+        let bankItems = [];
+        let assetItems = [];
+        let criminalsTable;
+
+        $(document).ready(function() {
+            // Initialize DataTable
+            criminalsTable = $('#criminalsTable').DataTable({
+                columns: [
+                    { data: 'image', render: renderPhoto },
+                    { data: 'id', render: renderIdAsLink },
+                    { data: 'name' },
+                    { data: 'city' },
+                    { data: 'group' },
+                    { data: 'groupPosition' },
+                    { data: 'status', render: renderStatus },
+                    { data: 'dob', render: calculateAge },
+                    { data: null, render: renderActions }
+                ],
+                responsive: true,
+                dom: 'lrtip' // Hide default search box since we have our own
+            });
+
+            // Set up filter controls
+            $('#filterGroup, #filterCity, #filterStatus').on('change', applyFilters);
+            $('#filterSearch').on('keyup', applyFilters);
+            $('#resetFilters').on('click', resetFilters);
+
+            // Load data from Firebase
+            database.ref('criminals').on('value', (snapshot) => {
+                const criminals = [];
+                snapshot.forEach(childSnapshot => {
+                    const criminal = childSnapshot.val();
+                    criminal.key = childSnapshot.key;
+                    criminals.push(criminal);
+                });
+                
+                criminalsTable.clear().rows.add(criminals).draw();
+            });
+
+            // Image modal functionality
+            const imageModal = document.getElementById("imageModal");
+            const modalImg = document.getElementById("modalImage");
+            const imageModalClose = imageModal.getElementsByClassName("close")[0];
+
+            // When the user clicks on <span> (x), close the modal
+            imageModalClose.onclick = function() {
+                imageModal.style.display = "none";
+            }
+
+            // When the user clicks anywhere outside of the modal, close it
+            window.onclick = function(event) {
+                if (event.target == imageModal) {
+                    imageModal.style.display = "none";
+                }
+                if (event.target == profileModal) {
+                    closeProfileModal();
+                }
+            }
+
+            // Profile form submission
+            $('#profileForm').on('submit', function(e) {
+                e.preventDefault();
+                saveProfile();
+            });
+
+            // Image upload preview for profile
+            $('#profileImageUpload').change(function() {
+                const file = this.files[0];
+                if (file) {
+                    const reader = new FileReader();
+                    reader.onload = function(e) {
+                        $('#previewProfileImage').attr('src', e.target.result).show();
+                        $('#addProfileImageIcon').hide();
+                    }
+                    reader.readAsDataURL(file);
+                }
+            });
+
+            // Click on image preview to trigger file input
+            $('#profileImagePreview').click(function() {
+                $('#profileImageUpload').click();
+            });
+
+            // Generate QR code when text changes
+            $('#qrCodeText').on('input', function() {
+                generateQRCode($(this).val());
+            });
+        });
+
+        function applyFilters() {
+            const group = $('#filterGroup').val();
+            const city = $('#filterCity').val();
+            const status = $('#filterStatus').val();
+            const searchTerm = $('#filterSearch').val().toLowerCase();
+            
+            criminalsTable.columns(4).search(group).columns(3).search(city).columns(6).search(status).draw();
+            
+            // Apply search filter to ID and Name columns
+            if (searchTerm) {
+                criminalsTable
+                    .columns([1, 2]) // ID and Name columns
+                    .search(searchTerm)
+                    .draw();
+            }
+        }
+
+        function resetFilters() {
+            $('#filterGroup, #filterCity, #filterStatus, #filterSearch').val('');
+            criminalsTable.search('').columns().search('').draw();
+        }
+
+        function renderPhoto(data, type, row) {
+            if (type === 'display') {
+                if (data) {
+                    return `<img src="${data}" class="photo-thumbnail" onclick="showImage('${data}')">`;
+                } else {
+                    return '<img src="https://via.placeholder.com/50" class="photo-thumbnail">';
+                }
+            }
+            return data;
+        }
+
+        function renderIdAsLink(data, type, row) {
+            if (type === 'display') {
+                return `<a href="#" onclick="viewCriminalDetails('${row.key}'); return false;">${data}</a>`;
+            }
+            return data;
+        }
+
+        function renderStatus(data, type, row) {
+            if (type === 'display') {
+                let className = '';
+                if (data === 'Wanted') className = 'status-wanted';
+                else if (data === 'Active') className = 'status-active';
+                else if (data === 'InActive') className = 'status-inactive';
+                else if (data === 'Deceased') className = 'status-deceased';
+                else if (data === 'Arrested') className = 'status-arrested';
+                else if (data === 'Fugitive') className = 'status-fugitive';
+                
+                return `<span class="${className}">${data}</span>`;
+            }
+            return data;
+        }
+
+        function calculateAge(data, type, row) {
+            if (type === 'display') {
+                if (!data) return 'N/A';
+                const birthDate = new Date(data);
+                const today = new Date();
+                let age = today.getFullYear() - birthDate.getFullYear();
+                const monthDiff = today.getMonth() - birthDate.getMonth();
+                
+                if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < birthDate.getDate())) {
+                    age--;
+                }
+                
+                return age;
+            }
+            return data;
+        }
+
+        function renderActions(data, type, row) {
+            if (type === 'display') {
+                return `
+                    <div class="action-buttons">
+                        <a href="add_criminal.html?view=${data.id}" class="btn btn-view">View</a>
+                        <button class="btn btn-profile" onclick="openProfileModal('${data.key}', '${data.name}')">
+                            <i class="fas fa-user"></i> Profile
+                        </button>
+                        <button class="btn btn-delete" onclick="deleteCriminal('${data.key}', '${data.name}')">Delete</button>
+                    </div>
+                `;
+            }
+            return data;
+        }
+
+        function showImage(imageSrc) {
+            const modal = document.getElementById("imageModal");
+            const modalImg = document.getElementById("modalImage");
+            modal.style.display = "block";
+            modalImg.src = imageSrc;
+        }
+
+        function deleteCriminal(key, name) {
+            if (confirm(`Are you sure you want to delete ${name}? This will also delete all associated data.`)) {
+                // First delete all profile data for this criminal
+                const updates = {};
+                
+                // Delete the criminal
+                updates[`criminals/${key}`] = null;
+                
+                database.ref().update(updates)
+                    .then(() => {
+                        alert('Record and all associated data deleted successfully');
+                    })
+                    .catch(error => {
+                        alert('Error deleting record: ' + error.message);
+                    });
+            }
+        }
+
+        function openProfileModal(criminalId, criminalName) {
+            const modal = document.getElementById("profileModal");
+            document.getElementById("profileModalTitle").textContent = `Profile for ${criminalName}`;
+            document.getElementById("profileCriminalId").value = criminalId;
+            currentCriminalId = criminalId;
+            
+            // Reset form
+            $('#profileForm')[0].reset();
+            $('#previewProfileImage').attr('src', '').hide();
+            $('#addProfileImageIcon').show();
+            $('#profileImageUpload').val('');
+            $('#qrCode').empty();
+            
+            // Clear all item lists
+            socialMediaItems = [];
+            travelHistoryItems = [];
+            businessItems = [];
+            bankItems = [];
+            assetItems = [];
+            $('#socialMediaList').empty();
+            $('#travelHistoryList').empty();
+            $('#businessList').empty();
+            $('#bankList').empty();
+            $('#assetList').empty();
+            
+            // Load criminal details
+            database.ref('criminals').child(criminalId).once('value', snapshot => {
+                const criminal = snapshot.val();
+                if (!criminal) return;
+                
+                currentCriminalDetails = criminal;
+                
+                // Fill the form with criminal data
+                $('#profileId').val(criminal.id || '');
+                $('#profileName').val(criminal.name || '');
+                $('#commonName').val(criminal.commonName || '');
+                $('#profileCity').val(criminal.city || '');
+                $('#profileGroup').val(criminal.group || '');
+                $('#profilePosition').val(criminal.groupPosition || '');
+                $('#profileStatus').val(criminal.status || '');
+                $('#dob').val(criminal.dob || '');
+                $('#address').val(criminal.address || '');
+                $('#currentAddress').val(criminal.currentAddress || '');
+                $('#contact').val(criminal.contact || '');
+                $('#maritalStatus').val(criminal.maritalStatus || '');
+                $('#sex').val(criminal.sex || '');
+                $('#licenseNo').val(criminal.licenseNo || '');
+                $('#passportNo').val(criminal.passportNo || '');
+                $('#email').val(criminal.email || '');
+                $('#description').val(criminal.description || '');
+                $('#jobStatus').val(criminal.jobStatus || '');
+                $('#currentJob').val(criminal.currentJob || '');
+                $('#jobDate').val(criminal.jobDate || '');
+                $('#medicalHistory').val(criminal.medicalHistory || '');
+                $('#hobby').val(criminal.hobby || '');
+                $('#mo').val(criminal.mo || '');
+                $('#incomeSource').val(criminal.incomeSource || '');
+                $('#otherIncomeSources').val(criminal.otherIncomeSources || '');
+                $('#qrCodeText').val(criminal.qrCodeText || '');
+                
+                // Generate QR code if text exists
+                if (criminal.qrCodeText) {
+                    generateQRCode(criminal.qrCodeText);
+                }
+                
+                // Set profile image if exists
+                if (criminal.image) {
+                    $('#previewProfileImage').attr('src', criminal.image).show();
+                    $('#addProfileImageIcon').hide();
+                }
+                
+                // Load social media items
+                if (criminal.socialMedia) {
+                    socialMediaItems = criminal.socialMedia;
+                    socialMediaItems.forEach((item, index) => {
+                        addSocialMediaItem(item.platform, item.url, index);
+                    });
+                }
+                
+                // Load travel history items
+                if (criminal.travelHistory) {
+                    travelHistoryItems = criminal.travelHistory;
+                    travelHistoryItems.forEach((item, index) => {
+                        addTravelHistoryItem(item.island, item.date, index);
+                    });
+                }
+                
+                // Load business items
+                if (criminal.businesses) {
+                    businessItems = criminal.businesses;
+                    businessItems.forEach((item, index) => {
+                        addBusinessItem(item.name, item.position, item.startDate, index);
+                    });
+                }
+                
+                // Load bank items
+                if (criminal.bankAccounts) {
+                    bankItems = criminal.bankAccounts;
+                    bankItems.forEach((item, index) => {
+                        addBankAccountItem(item.bankName, item.accountNumber, index);
+                    });
+                }
+                
+                // Load asset items
+                if (criminal.assets) {
+                    assetItems = criminal.assets;
+                    assetItems.forEach((item, index) => {
+                        addAssetItem(item.name, item.value, item.image, index);
+                    });
+                }
+                
+                // Generate profile view
+                generateProfileView(criminal);
+            });
+            
+            // Show the modal and default to first tab
+            modal.style.display = "block";
+            openProfileTab(null, 'editProfileTab');
+        }
+
+        function closeProfileModal() {
+            document.getElementById("profileModal").style.display = "none";
+            currentCriminalId = null;
+            currentCriminalDetails = null;
+        }
+
+        function openProfileTab(evt, tabName) {
+            // Hide all tab content
+            $('.tab-content').removeClass('active');
+            
+            // Remove active class from all tab buttons
+            $('.tab-button').removeClass('active');
+            
+            // Show the current tab and add active class to the button
+            $('#' + tabName).addClass('active');
+            
+            if (evt) {
+                $(evt.currentTarget).addClass('active');
+            } else {
+                // If called programmatically, activate the first button for this tab
+                $(`.tab-button:contains(${tabName === 'editProfileTab' ? 'Edit Profile' : 'View Profile'})`).addClass('active');
+            }
+        }
+
+        function generateQRCode(text) {
+            const qr = qrcode(0, 'L');
+            qr.addData(text);
+            qr.make();
+            
+            const qrContainer = document.getElementById('qrCode');
+            qrContainer.innerHTML = qr.createImgTag(4);
+            
+            // Make the QR code image responsive
+            const qrImg = qrContainer.querySelector('img');
+            if (qrImg) {
+                qrImg.style.width = '100%';
+                qrImg.style.height = 'auto';
+            }
+        }
+
+        function addSocialMedia() {
+            addSocialMediaItem('', '', socialMediaItems.length);
+        }
+
+        function addSocialMediaItem(platform, url, index) {
+            const itemId = `socialMedia-${index}`;
+            const itemHtml = `
+                <div class="item-card" id="${itemId}">
+                    <div class="form-row">
+                        <div class="form-col">
+                            <div class="form-group">
+                                <label for="${itemId}-platform">Platform</label>
+                                <input type="text" id="${itemId}-platform" class="form-control" value="${platform || ''}">
+                            </div>
+                        </div>
+                        <div class="form-col">
+                            <div class="form-group">
+                                <label for="${itemId}-url">Profile URL</label>
+                                <input type="url" id="${itemId}-url" class="form-control" value="${url || ''}">
+                            </div>
+                        </div>
+                    </div>
+                    <button type="button" class="remove-item-btn" onclick="removeItem('${itemId}', 'socialMedia')">
+                        <i class="fas fa-trash"></i> Remove
+                    </button>
+                </div>
+            `;
+            
+            $('#socialMediaList').append(itemHtml);
+            
+            // Add to array if new item
+            if (index >= socialMediaItems.length) {
+                socialMediaItems.push({
+                    platform: platform,
+                    url: url
+                });
+            }
+        }
+
+        function addTravelHistory() {
+            addTravelHistoryItem('', '', travelHistoryItems.length);
+        }
+
+        function addTravelHistoryItem(island, date, index) {
+            const itemId = `travelHistory-${index}`;
+            const itemHtml = `
+                <div class="item-card" id="${itemId}">
+                    <div class="form-row">
+                        <div class="form-col">
+                            <div class="form-group">
+                                <label for="${itemId}-island">Island Name</label>
+                                <input type="text" id="${itemId}-island" class="form-control" value="${island || ''}">
+                            </div>
+                        </div>
+                        <div class="form-col">
+                            <div class="form-group">
+                                <label for="${itemId}-date">Date</label>
+                                <input type="date" id="${itemId}-date" class="form-control" value="${date || ''}">
+                            </div>
+                        </div>
+                    </div>
+                    <button type="button" class="remove-item-btn" onclick="removeItem('${itemId}', 'travelHistory')">
+                        <i class="fas fa-trash"></i> Remove
+                    </button>
+                </div>
+            `;
+            
+            $('#travelHistoryList').append(itemHtml);
+            
+            // Add to array if new item
+            if (index >= travelHistoryItems.length) {
+                travelHistoryItems.push({
+                    island: island,
+                    date: date
+                });
+            }
+        }
+
+        function addBusiness() {
+            addBusinessItem('', '', '', businessItems.length);
+        }
+
+        function addBusinessItem(name, position, startDate, index) {
+            const itemId = `business-${index}`;
+            const itemHtml = `
+                <div class="item-card" id="${itemId}">
+                    <div class="form-row">
+                        <div class="form-col">
+                            <div class="form-group">
+                                <label for="${itemId}-name">Business Name</label>
+                                <input type="text" id="${itemId}-name" class="form-control" value="${name || ''}">
+                            </div>
+                        </div>
+                        <div class="form-col">
+                            <div class="form-group">
+                                <label for="${itemId}-position">Position</label>
+                                <input type="text" id="${itemId}-position" class="form-control" value="${position || ''}">
+                            </div>
+                        </div>
+                    </div>
+                    <div class="form-group">
+                        <label for="${itemId}-startDate">Start Date</label>
+                        <input type="date" id="${itemId}-startDate" class="form-control" value="${startDate || ''}">
+                    </div>
+                    <button type="button" class="remove-item-btn" onclick="removeItem('${itemId}', 'business')">
+                        <i class="fas fa-trash"></i> Remove
+                    </button>
+                </div>
+            `;
+            
+            $('#businessList').append(itemHtml);
+            
+            // Add to array if new item
+            if (index >= businessItems.length) {
+                businessItems.push({
+                    name: name,
+                    position: position,
+                    startDate: startDate
+                });
+            }
+        }
+
+        function addBankAccount() {
+            addBankAccountItem('', '', bankItems.length);
+        }
+
+        function addBankAccountItem(bankName, accountNumber, index) {
+            const itemId = `bank-${index}`;
+            const itemHtml = `
+                <div class="item-card" id="${itemId}">
+                    <div class="form-row">
+                        <div class="form-col">
+                            <div class="form-group">
+                                <label for="${itemId}-bankName">Bank Name</label>
+                                <input type="text" id="${itemId}-bankName" class="form-control" value="${bankName || ''}">
+                            </div>
+                        </div>
+                        <div class="form-col">
+                            <div class="form-group">
+                                <label for="${itemId}-accountNumber">Account Number</label>
+                                <input type="text" id="${itemId}-accountNumber" class="form-control" value="${accountNumber || ''}">
+                            </div>
+                        </div>
+                    </div>
+                    <button type="button" class="remove-item-btn" onclick="removeItem('${itemId}', 'bank')">
+                        <i class="fas fa-trash"></i> Remove
+                    </button>
+                </div>
+            `;
+            
+            $('#bankList').append(itemHtml);
+            
+            // Add to array if new item
+            if (index >= bankItems.length) {
+                bankItems.push({
+                    bankName: bankName,
+                    accountNumber: accountNumber
+                });
+            }
+        }
+
+        function addAsset() {
+            addAssetItem('', '', '', assetItems.length);
+        }
+
+        function addAssetItem(name, value, image, index) {
+            const itemId = `asset-${index}`;
+            const itemHtml = `
+                <div class="item-card" id="${itemId}">
+                    <div class="form-row">
+                        <div class="form-col">
+                            <div class="form-group">
+                                <label for="${itemId}-name">Asset Name</label>
+                                <input type="text" id="${itemId}-name" class="form-control" value="${name || ''}">
+                            </div>
+                        </div>
+                        <div class="form-col">
+                            <div class="form-group">
+                                <label for="${itemId}-value">Value</label>
+                                <input type="text" id="${itemId}-value" class="form-control" value="${value || ''}">
+                            </div>
+                        </div>
+                    </div>
+                    <div class="image-upload-container">
+                        <div class="image-preview" id="${itemId}-imagePreview">
+                            ${image ? 
+                                `<img src="${image}" id="${itemId}-previewImage" style="max-width: 100%; max-height: 100%;">` : 
+                                '<i class="fas fa-image add-image-icon" id="' + itemId + '-addImageIcon"></i>'}
+                        </div>
+                        <label class="upload-btn">
+                            <input type="file" id="${itemId}-imageUpload" accept="image/*">
+                            Add Asset Image
+                        </label>
+                    </div>
+                    <button type="button" class="remove-item-btn" onclick="removeItem('${itemId}', 'asset')">
+                        <i class="fas fa-trash"></i> Remove
+                    </button>
+                </div>
+            `;
+            
+            $('#assetList').append(itemHtml);
+            
+            // Set up image upload for this asset
+            $(`#${itemId}-imagePreview`).click(function() {
+                $(`#${itemId}-imageUpload`).click();
+            });
+            
+            $(`#${itemId}-imageUpload`).change(function() {
+                const file = this.files[0];
+                if (file) {
+                    const reader = new FileReader();
+                    reader.onload = function(e) {
+                        $(`#${itemId}-previewImage`).attr('src', e.target.result).show();
+                        $(`#${itemId}-addImageIcon`).hide();
+                        
+                        // Update the asset in the array
+                        if (assetItems[index]) {
+                            assetItems[index].image = e.target.result;
+                        }
+                    };
+                    reader.readAsDataURL(file);
+                }
+            });
+            
+            // Add to array if new item
+            if (index >= assetItems.length) {
+                assetItems.push({
+                    name: name,
+                    value: value,
+                    image: image
+                });
+            }
+        }
+
+        function removeItem(itemId, type) {
+            // Remove from DOM
+            $(`#${itemId}`).remove();
+            
+            // Remove from the appropriate array
+            const index = parseInt(itemId.split('-')[1]);
+            
+            switch (type) {
+                case 'socialMedia':
+                    socialMediaItems.splice(index, 1);
+                    break;
+                case 'travelHistory':
+                    travelHistoryItems.splice(index, 1);
+                    break;
+                case 'business':
+                    businessItems.splice(index, 1);
+                    break;
+                case 'bank':
+                    bankItems.splice(index, 1);
+                    break;
+                case 'asset':
+                    assetItems.splice(index, 1);
+                    break;
+            }
+        }
+
+        function saveProfile() {
+            const criminalId = $('#profileCriminalId').val();
+            const id = $('#profileId').val();
+            const name = $('#profileName').val();
+            const commonName = $('#commonName').val();
+            const city = $('#profileCity').val();
+            const group = $('#profileGroup').val();
+            const position = $('#profilePosition').val();
+            const status = $('#profileStatus').val();
+            const dob = $('#dob').val();
+            const address = $('#address').val();
+            const currentAddress = $('#currentAddress').val();
+            const contact = $('#contact').val();
+            const maritalStatus = $('#maritalStatus').val();
+            const sex = $('#sex').val();
+            const licenseNo = $('#licenseNo').val();
+            const passportNo = $('#passportNo').val();
+            const email = $('#email').val();
+            const description = $('#description').val();
+            const jobStatus = $('#jobStatus').val();
+            const currentJob = $('#currentJob').val();
+            const jobDate = $('#jobDate').val();
+            const medicalHistory = $('#medicalHistory').val();
+            const hobby = $('#hobby').val();
+            const mo = $('#mo').val();
+            const incomeSource = $('#incomeSource').val();
+            const otherIncomeSources = $('#otherIncomeSources').val();
+            const qrCodeText = $('#qrCodeText').val();
+            
+            // Get the profile image file
+            const profileImageFile = $('#profileImageUpload')[0].files[0];
+            
+            // Update social media items from form
+            socialMediaItems = [];
+            $('[id^="socialMedia-"]').each(function() {
+                const idParts = this.id.split('-');
+                const index = idParts[1];
+                
+                socialMediaItems.push({
+                    platform: $(`#socialMedia-${index}-platform`).val(),
+                    url: $(`#socialMedia-${index}-url`).val()
+                });
+            });
+            
+            // Update travel history items from form
+            travelHistoryItems = [];
+            $('[id^="travelHistory-"]').each(function() {
+                const idParts = this.id.split('-');
+                const index = idParts[1];
+                
+                travelHistoryItems.push({
+                    island: $(`#travelHistory-${index}-island`).val(),
+                    date: $(`#travelHistory-${index}-date`).val()
+                });
+            });
+            
+            // Update business items from form
+            businessItems = [];
+            $('[id^="business-"]').each(function() {
+                const idParts = this.id.split('-');
+                const index = idParts[1];
+                
+                businessItems.push({
+                    name: $(`#business-${index}-name`).val(),
+                    position: $(`#business-${index}-position`).val(),
+                    startDate: $(`#business-${index}-startDate`).val()
+                });
+            });
+            
+            // Update bank items from form
+            bankItems = [];
+            $('[id^="bank-"]').each(function() {
+                const idParts = this.id.split('-');
+                const index = idParts[1];
+                
+                bankItems.push({
+                    bankName: $(`#bank-${index}-bankName`).val(),
+                    accountNumber: $(`#bank-${index}-accountNumber`).val()
+                });
+            });
+            
+            // Update asset items from form
+            assetItems = [];
+            $('[id^="asset-"]').each(function() {
+                const idParts = this.id.split('-');
+                const index = idParts[1];
+                
+                const imageSrc = $(`#${this.id} img`).attr('src') || '';
+                
+                assetItems.push({
+                    name: $(`#asset-${index}-name`).val(),
+                    value: $(`#asset-${index}-value`).val(),
+                    image: imageSrc
+                });
+            });
+            
+            if (!id || !name || !city || !group || !status || !dob || !address || !currentAddress || !contact) {
+                alert('Please fill all required fields');
+                return;
+            }
+            
+            // Create criminal object
+            const criminal = {
+                id: id,
+                name: name,
+                commonName: commonName,
+                city: city,
+                group: group,
+                groupPosition: position,
+                status: status,
+                dob: dob,
+                address: address,
+                currentAddress: currentAddress,
+                contact: contact,
+                maritalStatus: maritalStatus,
+                sex: sex,
+                licenseNo: licenseNo,
+                passportNo: passportNo,
+                email: email,
+                description: description,
+                jobStatus: jobStatus,
+                currentJob: currentJob,
+                jobDate: jobDate,
+                medicalHistory: medicalHistory,
+                hobby: hobby,
+                mo: mo,
+                incomeSource: incomeSource,
+                otherIncomeSources: otherIncomeSources,
+                qrCodeText: qrCodeText,
+                socialMedia: socialMediaItems,
+                travelHistory: travelHistoryItems,
+                businesses: businessItems,
+                bankAccounts: bankItems,
+                assets: assetItems,
+                timestamp: firebase.database.ServerValue.TIMESTAMP
+            };
+            
+            // Process profile image
+            const processImage = () => {
+                return new Promise((resolve) => {
+                    if (profileImageFile) {
+                        const reader = new FileReader();
+                        reader.onload = function(e) {
+                            criminal.image = e.target.result;
+                            resolve();
+                        };
+                        reader.readAsDataURL(profileImageFile);
+                    } else if ($('#previewProfileImage').attr('src')) {
+                        // Keep existing image if no new one was uploaded
+                        criminal.image = $('#previewProfileImage').attr('src');
+                        resolve();
+                    } else {
+                        resolve();
+                    }
+                });
+            };
+            
+            processImage().then(() => {
+                // Update the criminal in Firebase
+                database.ref('criminals').child(criminalId).update(criminal)
+                    .then(() => {
+                        alert('Profile saved successfully');
+                        currentCriminalDetails = criminal;
+                        generateProfileView(criminal);
+                        openProfileTab(null, 'viewProfileTab');
+                    })
+                    .catch(error => {
+                        alert('Error saving profile: ' + error.message);
+                    });
+            });
+        }
+
+        function generateProfileView(criminal) {
+            let profileHtml = `
+                <div class="profile-header">
+                    ${criminal.image ? 
+                        `<img src="${criminal.image}" class="profile-image" onclick="showImage('${criminal.image}')">` : 
+                        '<i class="fas fa-user profile-image" style="font-size: 100px;"></i>'}
+                    <div class="profile-info">
+                        <h1 class="profile-name">${criminal.name}</h1>
+                        <p class="profile-id">ID: ${criminal.id}</p>
+                        <span class="profile-status ${getStatusClass(criminal.status)}">${criminal.status}</span>
+                        ${criminal.commonName ? `<p><strong>Common Name:</strong> ${criminal.commonName}</p>` : ''}
+                        ${criminal.city ? `<p><strong>City:</strong> ${criminal.city}</p>` : ''}
+                        ${criminal.group ? `<p><strong>Group:</strong> ${criminal.group}</p>` : ''}
+                        ${criminal.groupPosition ? `<p><strong>Position:</strong> ${criminal.groupPosition}</p>` : ''}
+                    </div>
+                </div>
+                
+                <div class="profile-section">
+                    <h3 class="profile-section-title">Personal Information</h3>
+                    
+                    <div class="profile-grid">
+                        <div class="profile-grid-item">
+                            <div class="profile-label">Date of Birth</div>
+                            <div class="profile-value">${criminal.dob ? new Date(criminal.dob).toLocaleDateString() : 'N/A'}</div>
+                        </div>
+                        
+                        <div class="profile-grid-item">
+                            <div class="profile-label">Age</div>
+                            <div class="profile-value">${calculateAge(criminal.dob, 'display', criminal)}</div>
+                        </div>
+                        
+                        <div class="profile-grid-item">
+                            <div class="profile-label">Marital Status</div>
+                            <div class="profile-value">${criminal.maritalStatus || 'N/A'}</div>
+                        </div>
+                        
+                        <div class="profile-grid-item">
+                            <div class="profile-label">Sex</div>
+                            <div class="profile-value">${criminal.sex || 'N/A'}</div>
+                        </div>
+                        
+                        <div class="profile-grid-item">
+                            <div class="profile-label">License Number</div>
+                            <div class="profile-value">${criminal.licenseNo || 'N/A'}</div>
+                        </div>
+                        
+                        <div class="profile-grid-item">
+                            <div class="profile-label">Passport Number</div>
+                            <div class="profile-value">${criminal.passportNo || 'N/A'}</div>
+                        </div>
+                        
+                        <div class="profile-grid-item">
+                            <div class="profile-label">Email</div>
+                            <div class="profile-value">${criminal.email || 'N/A'}</div>
+                        </div>
+                        
+                        <div class="profile-grid-item">
+                            <div class="profile-label">Recent Contact</div>
+                            <div class="profile-value">${criminal.contact || 'N/A'}</div>
+                        </div>
+                    </div>
+                    
+                    <div class="profile-subsection">
+                        <h4 class="profile-subsection-title">Address</h4>
+                        <div class="profile-value">${criminal.address || 'N/A'}</div>
+                    </div>
+                    
+                    <div class="profile-subsection">
+                        <h4 class="profile-subsection-title">Current Address</h4>
+                        <div class="profile-value">${criminal.currentAddress || 'N/A'}</div>
+                    </div>
+                    
+                    <div class="profile-subsection">
+                        <h4 class="profile-subsection-title">Description/Notes</h4>
+                        <div class="profile-value">${criminal.description || 'N/A'}</div>
+                    </div>
+                    
+                    ${criminal.qrCodeText ? `
+                    <div class="profile-subsection">
+                        <h4 class="profile-subsection-title">QR Code</h4>
+                        <div class="qr-code-container">
+                            <div id="viewQrCode"></div>
+                        </div>
+                    </div>
+                    ` : ''}
+                </div>
+                
+                <div class="profile-section">
+                    <h3 class="profile-section-title">Employment Information</h3>
+                    
+                    <div class="profile-grid">
+                        <div class="profile-grid-item">
+                            <div class="profile-label">Job Status</div>
+                            <div class="profile-value">${criminal.jobStatus || 'N/A'}</div>
+                        </div>
+                        
+                        <div class="profile-grid-item">
+                            <div class="profile-label">Current/Most Recent Job</div>
+                            <div class="profile-value">${criminal.currentJob || 'N/A'}</div>
+                        </div>
+                        
+                        <div class="profile-grid-item">
+                            <div class="profile-label">Job Date</div>
+                            <div class="profile-value">${criminal.jobDate ? new Date(criminal.jobDate).toLocaleDateString() : 'N/A'}</div>
+                        </div>
+                    </div>
+                    
+                    <div class="profile-subsection">
+                        <h4 class="profile-subsection-title">Medical History</h4>
+                        <div class="profile-value">${criminal.medicalHistory || 'N/A'}</div>
+                    </div>
+                    
+                    <div class="profile-subsection">
+                        <h4 class="profile-subsection-title">Hobby</h4>
+                        <div class="profile-value">${criminal.hobby || 'N/A'}</div>
+                    </div>
+                    
+                    <div class="profile-subsection">
+                        <h4 class="profile-subsection-title">MO (Modus Operandi)</h4>
+                        <div class="profile-value">${criminal.mo || 'N/A'}</div>
+                    </div>
+                </div>
+            `;
+            
+            // Social Media Section
+            if (criminal.socialMedia && criminal.socialMedia.length > 0) {
+                profileHtml += `
+                    <div class="profile-section">
+                        <h3 class="profile-section-title">Social Media Profiles</h3>
+                        <div class="social-media-container">
+                `;
+                
+                criminal.socialMedia.forEach(item => {
+                    if (item.platform || item.url) {
+                        profileHtml += `
+                            <div class="social-media-item">
+                                <i class="fab fa-${getSocialMediaIcon(item.platform)}" style="margin-right: 5px;"></i>
+                                ${item.platform || 'Social Media'}: 
+                                <a href="${item.url}" target="_blank" style="margin-left: 5px;">View</a>
+                            </div>
+                        `;
+                    }
+                });
+                
+                profileHtml += `
+                        </div>
+                    </div>
+                `;
+            }
+            
+            // Travel History Section
+            if (criminal.travelHistory && criminal.travelHistory.length > 0) {
+                profileHtml += `
+                    <div class="profile-section">
+                        <h3 class="profile-section-title">Travel History</h3>
+                        <div class="profile-grid">
+                `;
+                
+                criminal.travelHistory.forEach(item => {
+                    if (item.island || item.date) {
+                        profileHtml += `
+                            <div class="profile-grid-item">
+                                <div class="profile-label">Island</div>
+                                <div class="profile-value">${item.island || 'N/A'}</div>
+                                
+                                <div class="profile-label">Date</div>
+                                <div class="profile-value">${item.date ? new Date(item.date).toLocaleDateString() : 'N/A'}</div>
+                            </div>
+                        `;
+                    }
+                });
+                
+                profileHtml += `
+                        </div>
+                    </div>
+                `;
+            }
+            
+            // Business Information Section
+            if (criminal.businesses && criminal.businesses.length > 0) {
+                profileHtml += `
+                    <div class="profile-section">
+                        <h3 class="profile-section-title">Business Information</h3>
+                        <div class="profile-grid">
+                `;
+                
+                criminal.businesses.forEach(item => {
+                    if (item.name || item.position || item.startDate) {
+                        profileHtml += `
+                            <div class="profile-grid-item">
+                                <div class="profile-label">Business Name</div>
+                                <div class="profile-value">${item.name || 'N/A'}</div>
+                                
+                                <div class="profile-label">Position</div>
+                                <div class="profile-value">${item.position || 'N/A'}</div>
+                                
+                                <div class="profile-label">Start Date</div>
+                                <div class="profile-value">${item.startDate ? new Date(item.startDate).toLocaleDateString() : 'N/A'}</div>
+                            </div>
+                        `;
+                    }
+                });
+                
+                profileHtml += `
+                        </div>
+                    </div>
+                `;
+            }
+            
+            // Bank Accounts Section
+            if (criminal.bankAccounts && criminal.bankAccounts.length > 0) {
+                profileHtml += `
+                    <div class="profile-section">
+                        <h3 class="profile-section-title">Bank Accounts</h3>
+                        <div class="profile-grid">
+                `;
+                
+                criminal.bankAccounts.forEach(item => {
+                    if (item.bankName || item.accountNumber) {
+                        profileHtml += `
+                            <div class="profile-grid-item">
+                                <div class="profile-label">Bank Name</div>
+                                <div class="profile-value">${item.bankName || 'N/A'}</div>
+                                
+                                <div class="profile-label">Account Number</div>
+                                <div class="profile-value">${item.accountNumber || 'N/A'}</div>
+                            </div>
+                        `;
+                    }
+                });
+                
+                profileHtml += `
+                        </div>
+                    </div>
+                `;
+            }
+            
+            // Source of Income Section
+            if (criminal.incomeSource || criminal.otherIncomeSources) {
+                profileHtml += `
+                    <div class="profile-section">
+                        <h3 class="profile-section-title">Source of Income</h3>
+                        
+                        <div class="profile-grid">
+                            <div class="profile-grid-item">
+                                <div class="profile-label">Primary Source</div>
+                                <div class="profile-value">${criminal.incomeSource || 'N/A'}</div>
+                            </div>
+                        </div>
+                        
+                        <div class="profile-subsection">
+                            <h4 class="profile-subsection-title">Other Income Sources</h4>
+                            <div class="profile-value">${criminal.otherIncomeSources || 'N/A'}</div>
+                        </div>
+                    </div>
+                `;
+            }
+            
+            // Asset Information Section
+            if (criminal.assets && criminal.assets.length > 0) {
+                profileHtml += `
+                    <div class="profile-section">
+                        <h3 class="profile-section-title">Asset Information</h3>
+                        <div class="profile-grid">
+                `;
+                
+                criminal.assets.forEach(item => {
+                    if (item.name || item.value || item.image) {
+                        profileHtml += `
+                            <div class="profile-grid-item">
+                                <div class="profile-label">Asset Name</div>
+                                <div class="profile-value">${item.name || 'N/A'}</div>
+                                
+                                <div class="profile-label">Value</div>
+                                <div class="profile-value">${item.value || 'N/A'}</div>
+                                
+                                ${item.image ? `
+                                <div class="profile-label">Image</div>
+                                <div class="profile-value">
+                                    <img src="${item.image}" class="profile-asset-image" onclick="showImage('${item.image}')">
+                                </div>
+                                ` : ''}
+                            </div>
+                        `;
+                    }
+                });
+                
+                profileHtml += `
+                        </div>
+                    </div>
+                `;
+            }
+            
+            // Set the profile content
+            document.getElementById('profileContent').innerHTML = profileHtml;
+            
+            // Generate QR code if text exists
+            if (criminal.qrCodeText) {
+                const qr = qrcode(0, 'L');
+                qr.addData(criminal.qrCodeText);
+                qr.make();
+                
+                const qrContainer = document.getElementById('viewQrCode');
+                qrContainer.innerHTML = qr.createImgTag(4);
+                
+                // Make the QR code image responsive
+                const qrImg = qrContainer.querySelector('img');
+                if (qrImg) {
+                    qrImg.style.width = '150px';
+                    qrImg.style.height = '150px';
+                }
+            }
+            
+            // Set up click handlers for asset images
+            document.querySelectorAll('.profile-asset-image').forEach(img => {
+                img.addEventListener('click', function() {
+                    showImage(this.src);
+                });
+            });
+        }
+
+        function getStatusClass(status) {
+            switch (status) {
+                case 'Wanted': return 'status-wanted';
+                case 'Active': return 'status-active';
+                case 'InActive': return 'status-inactive';
+                case 'Deceased': return 'status-deceased';
+                case 'Arrested': return 'status-arrested';
+                case 'Fugitive': return 'status-fugitive';
+                default: return '';
+            }
+        }
+
+        function getSocialMediaIcon(platform) {
+            const platformLower = platform ? platform.toLowerCase() : '';
+            if (platformLower.includes('facebook')) return 'facebook';
+            if (platformLower.includes('twitter')) return 'twitter';
+            if (platformLower.includes('instagram')) return 'instagram';
+            if (platformLower.includes('linkedin')) return 'linkedin';
+            if (platformLower.includes('youtube')) return 'youtube';
+            if (platformLower.includes('tiktok')) return 'tiktok';
+            if (platformLower.includes('whatsapp')) return 'whatsapp';
+            if (platformLower.includes('telegram')) return 'telegram';
+            return 'share-alt';
+        }
+
+        function viewCriminalDetails(criminalKey) {
+            database.ref('criminals').child(criminalKey).once('value', snapshot => {
+                const criminal = snapshot.val();
+                if (!criminal) return;
+                
+                currentCriminalDetails = criminal;
+                
+                let detailsHtml = `
+                    <div class="person-image-top">
+                        ${criminal.image ? `<img src="${criminal.image}" style="max-width: 200px; max-height: 200px; border-radius: 8px;">` : '<i class="fas fa-user" style="font-size: 100px;"></i>'}
+                    </div>
+                    
+                    <div class="details-section">
+                        <h3>Criminal Details</h3>
+                        <table class="details-table">
+                            <tr>
+                                <th>ID</th>
+                                <td>${criminal.id || 'N/A'}</td>
+                            </tr>
+                            <tr>
+                                <th>Name</th>
+                                <td>${criminal.name || 'N/A'}</td>
+                            </tr>
+                            <tr>
+                                <th>City</th>
+                                <td>${criminal.city || 'N/A'}</td>
+                            </tr>
+                            <tr>
+                                <th>Group</th>
+                                <td>${criminal.group || 'N/A'}</td>
+                            </tr>
+                            <tr>
+                                <th>Position</th>
+                                <td>${criminal.groupPosition || 'N/A'}</td>
+                            </tr>
+                            <tr>
+                                <th>Status</th>
+                                <td>${criminal.status || 'N/A'}</td>
+                            </tr>
+                            <tr>
+                                <th>Date of Birth</th>
+                                <td>${criminal.dob || 'N/A'}</td>
+                            </tr>
+                            <tr>
+                                <th>Age</th>
+                                <td>${calculateAge(criminal.dob, 'display', criminal)}</td>
+                            </tr>
+                            <tr>
+                                <th>Address</th>
+                                <td>${criminal.address || 'N/A'}</td>
+                            </tr>
+                            <tr>
+                                <th>Contact</th>
+                                <td>${criminal.contact || 'N/A'}</td>
+                            </tr>
+                            <tr>
+                                <th>Description</th>
+                                <td>${criminal.description || 'N/A'}</td>
+                            </tr>
+                        </table>
+                    </div>
+                `;
+                
+                // Set the content and show the modal
+                document.getElementById('criminalDetailsContent').innerHTML = detailsHtml;
+                document.getElementById('criminalDetailsModal').style.display = 'block';
+            });
+        }
+
+        function exportProfileToPDF() {
+            if (!currentCriminalDetails) return;
+            
+            const criminal = currentCriminalDetails;
+            
+            // Get export options
+            const includePersonalInfo = $('#exportPersonalInfo').is(':checked');
+            const includeEmploymentInfo = $('#exportEmploymentInfo').is(':checked');
+            const includeSocialMedia = $('#exportSocialMedia').is(':checked');
+            const includeTravelHistory = $('#exportTravelHistory').is(':checked');
+            const includeBusinessInfo = $('#exportBusinessInfo').is(':checked');
+            const includeBankInfo = $('#exportBankInfo').is(':checked');
+            const includeAssetInfo = $('#exportAssetInfo').is(':checked');
+            
+            // Create a new PDF document
+            const doc = new jsPDF();
+            
+            // Set document properties
+            doc.setProperties({
+                title: `Profile Report - ${criminal.name}`,
+                subject: 'Criminal Profile',
+                author: 'Criminal Records System',
+                keywords: 'profile, report, criminal',
+                creator: 'Criminal Records System'
+            });
+            
+            // Add title
+            doc.setFontSize(18);
+            doc.setTextColor(0);
+            doc.text(`Profile Report - ${criminal.name}`, 105, 15, { align: 'center' });
+            
+            // Add ID and status
+            doc.setFontSize(12);
+            doc.text(`ID: ${criminal.id || 'N/A'}`, 14, 25);
+            doc.text(`Status: ${criminal.status || 'N/A'}`, 105, 25, { align: 'center' });
+            doc.text(`Date: ${new Date().toLocaleDateString()}`, 196, 25, { align: 'right' });
+            
+            // Add a line separator
+            doc.setDrawColor(0);
+            doc.setLineWidth(0.5);
+            doc.line(14, 30, 196, 30);
+            
+            // Set initial y position for content
+            let y = 40;
+            
+            // Add profile image at the top if included
+            if (includePersonalInfo && criminal.image) {
+                // Add image to PDF
+                const img = new Image();
+                img.onload = function() {
+                    // Calculate dimensions to maintain aspect ratio
+                    const maxWidth = 40;
+                    const maxHeight = 40;
+                    let width = img.width;
+                    let height = img.height;
+                    
+                    if (width > maxWidth) {
+                        const ratio = maxWidth / width;
+                        width = maxWidth;
+                        height = height * ratio;
+                    }
+                    
+                    if (height > maxHeight) {
+                        const ratio = maxHeight / height;
+                        height = maxHeight;
+                        width = width * ratio;
+                    }
+                    
+                    // Add image to PDF
+                    doc.addImage(criminal.image, 'JPEG', 14, y, width, height);
+                    
+                    // Add name next to image
+                    doc.setFontSize(16);
+                    doc.text(criminal.name, 14 + width + 10, y + height/2 + 3);
+                    
+                    y += height + 10;
+                    
+                    // Continue with the rest of the PDF generation
+                    generateProfilePDFContent(doc, criminal, y, 
+                        includePersonalInfo, includeEmploymentInfo, includeSocialMedia, 
+                        includeTravelHistory, includeBusinessInfo, includeBankInfo, 
+                        includeAssetInfo);
+                };
+                img.src = criminal.image;
+            } else {
+                // No image to include, just generate the content
+                generateProfilePDFContent(doc, criminal, y, 
+                    includePersonalInfo, includeEmploymentInfo, includeSocialMedia, 
+                    includeTravelHistory, includeBusinessInfo, includeBankInfo, 
+                    includeAssetInfo);
+            }
+        }
+        
+        function generateProfilePDFContent(doc, criminal, y, 
+            includePersonalInfo, includeEmploymentInfo, includeSocialMedia, 
+            includeTravelHistory, includeBusinessInfo, includeBankInfo, 
+            includeAssetInfo) {
+            
+            // Add personal information section if included
+            if (includePersonalInfo) {
+                doc.setFontSize(14);
+                doc.setTextColor(0);
+                doc.text('Personal Information', 14, y);
+                y += 10;
+                
+                // Create personal details table
+                const personalDetails = [
+                    ['ID Card No.', criminal.id || 'N/A'],
+                    ['Full Name', criminal.name || 'N/A'],
+                    ['Common Name', criminal.commonName || 'N/A'],
+                    ['City', criminal.city || 'N/A'],
+                    ['Date of Birth', criminal.dob ? new Date(criminal.dob).toLocaleDateString() : 'N/A'],
+                    ['Age', calculateAge(criminal.dob, 'display', criminal)],
+                    ['Marital Status', criminal.maritalStatus || 'N/A'],
+                    ['Sex', criminal.sex || 'N/A'],
+                    ['License No.', criminal.licenseNo || 'N/A'],
+                    ['Passport No.', criminal.passportNo || 'N/A'],
+                    ['Email', criminal.email || 'N/A'],
+                    ['Recent Contact', criminal.contact || 'N/A'],
+                    ['Address', criminal.address || 'N/A'],
+                    ['Current Address', criminal.currentAddress || 'N/A'],
+                    ['Description', criminal.description || 'N/A']
+                ];
+                
+                doc.autoTable({
+                    startY: y,
+                    head: [['Field', 'Value']],
+                    body: personalDetails,
+                    margin: { left: 14 },
+                    styles: { fontSize: 10, textColor: [0] },
+                    headStyles: { fillColor: [0], textColor: [255] },
+                    columnStyles: { 
+                        0: { cellWidth: 50, fontStyle: 'bold' },
+                        1: { cellWidth: 'auto' }
+                    }
+                });
+                
+                // Update y position after table
+                y = doc.lastAutoTable.finalY + 10;
+                
+                // Add QR code if exists
+                if (criminal.qrCodeText) {
+                    const qr = qrcode(0, 'L');
+                    qr.addData(criminal.qrCodeText);
+                    qr.make();
+                    
+                    doc.setFontSize(12);
+                    doc.text('QR Code:', 14, y);
+                    y += 5;
+                    
+                    const qrData = qr.createDataURL(4);
+                    const qrImg = new Image();
+                    qrImg.onload = function() {
+                        doc.addImage(qrData, 'PNG', 14, y, 30, 30);
+                        y += 35;
+                        
+                        // Continue with the rest of the PDF generation
+                        continueProfilePDF(doc, criminal, y, 
+                            includeEmploymentInfo, includeSocialMedia, 
+                            includeTravelHistory, includeBusinessInfo, includeBankInfo, 
+                            includeAssetInfo);
+                    };
+                    qrImg.src = qrData;
+                    return; // Exit early as we'll continue in the onload callback
+                }
+            }
+            
+            // Continue with the rest of the PDF generation
+            continueProfilePDF(doc, criminal, y, 
+                includeEmploymentInfo, includeSocialMedia, 
+                includeTravelHistory, includeBusinessInfo, includeBankInfo, 
+                includeAssetInfo);
+        }
+        
+        function continueProfilePDF(doc, criminal, y, 
+            includeEmploymentInfo, includeSocialMedia, 
+            includeTravelHistory, includeBusinessInfo, includeBankInfo, 
+            includeAssetInfo) {
+            
+            // Add employment information section if included
+            if (includeEmploymentInfo) {
+                // Add a new page if needed
+                if (y > 250) {
+                    doc.addPage();
+                    y = 20;
+                }
+                
+                doc.setFontSize(14);
+                doc.text('Employment Information', 14, y);
+                y += 10;
+                
+                // Create employment details table
+                const employmentDetails = [
+                    ['Job Status', criminal.jobStatus || 'N/A'],
+                    ['Current/Most Recent Job', criminal.currentJob || 'N/A'],
+                    ['Job Date', criminal.jobDate ? new Date(criminal.jobDate).toLocaleDateString() : 'N/A'],
+                    ['Medical History', criminal.medicalHistory || 'N/A'],
+                    ['Hobby', criminal.hobby || 'N/A'],
+                    ['MO (Modus Operandi)', criminal.mo || 'N/A']
+                ];
+                
+                doc.autoTable({
+                    startY: y,
+                    head: [['Field', 'Value']],
+                    body: employmentDetails,
+                    margin: { left: 14 },
+                    styles: { fontSize: 10, textColor: [0] },
+                    headStyles: { fillColor: [0], textColor: [255] },
+                    columnStyles: { 
+                        0: { cellWidth: 50, fontStyle: 'bold' },
+                        1: { cellWidth: 'auto' }
+                    }
+                });
+                
+                y = doc.lastAutoTable.finalY + 10;
+            }
+            
+            // Add social media section if included and exists
+            if (includeSocialMedia && criminal.socialMedia && criminal.socialMedia.length > 0) {
+                // Add a new page if needed
+                if (y > 250) {
+                    doc.addPage();
+                    y = 20;
+                }
+                
+                doc.setFontSize(14);
+                doc.text('Social Media Profiles', 14, y);
+                y += 10;
+                
+                // Prepare social media data for table
+                const socialMediaData = criminal.socialMedia.map(item => {
+                    return [
+                        item.platform || 'N/A',
+                        item.url || 'N/A'
+                    ];
+                });
+                
+                // Add social media table
+                doc.autoTable({
+                    startY: y,
+                    head: [['Platform', 'URL']],
+                    body: socialMediaData,
+                    margin: { left: 14 },
+                    styles: { fontSize: 10, textColor: [0] },
+                    headStyles: { fillColor: [0], textColor: [255] },
+                    columnStyles: {
+                        0: { cellWidth: 40 },
+                        1: { cellWidth: 'auto' }
+                    }
+                });
+                
+                y = doc.lastAutoTable.finalY + 10;
+            }
+            
+            // Add travel history section if included and exists
+            if (includeTravelHistory && criminal.travelHistory && criminal.travelHistory.length > 0) {
+                // Add a new page if needed
+                if (y > 250) {
+                    doc.addPage();
+                    y = 20;
+                }
+                
+                doc.setFontSize(14);
+                doc.text('Travel History', 14, y);
+                y += 10;
+                
+                // Prepare travel history data for table
+                const travelHistoryData = criminal.travelHistory.map(item => {
+                    return [
+                        item.island || 'N/A',
+                        item.date ? new Date(item.date).toLocaleDateString() : 'N/A'
+                    ];
+                });
+                
+                // Add travel history table
+                doc.autoTable({
+                    startY: y,
+                    head: [['Island', 'Date']],
+                    body: travelHistoryData,
+                    margin: { left: 14 },
+                    styles: { fontSize: 10, textColor: [0] },
+                    headStyles: { fillColor: [0], textColor: [255] },
+                    columnStyles: {
+                        0: { cellWidth: 60 },
+                        1: { cellWidth: 40 }
+                    }
+                });
+                
+                y = doc.lastAutoTable.finalY + 10;
+            }
+            
+            // Add business information section if included and exists
+            if (includeBusinessInfo && criminal.businesses && criminal.businesses.length > 0) {
+                // Add a new page if needed
+                if (y > 250) {
+                    doc.addPage();
+                    y = 20;
+                }
+                
+                doc.setFontSize(14);
+                doc.text('Business Information', 14, y);
+                y += 10;
+                
+                // Prepare business data for table
+                const businessData = criminal.businesses.map(item => {
+                    return [
+                        item.name || 'N/A',
+                        item.position || 'N/A',
+                        item.startDate ? new Date(item.startDate).toLocaleDateString() : 'N/A'
+                    ];
+                });
+                
+                // Add business table
+                doc.autoTable({
+                    startY: y,
+                    head: [['Business Name', 'Position', 'Start Date']],
+                    body: businessData,
+                    margin: { left: 14 },
+                    styles: { fontSize: 10, textColor: [0] },
+                    headStyles: { fillColor: [0], textColor: [255] },
+                    columnStyles: {
+                        0: { cellWidth: 60 },
+                        1: { cellWidth: 40 },
+                        2: { cellWidth: 40 }
+                    }
+                });
+                
+                y = doc.lastAutoTable.finalY + 10;
+            }
+            
+            // Add bank accounts section if included and exists
+            if (includeBankInfo && criminal.bankAccounts && criminal.bankAccounts.length > 0) {
+                // Add a new page if needed
+                if (y > 250) {
+                    doc.addPage();
+                    y = 20;
+                }
+                
+                doc.setFontSize(14);
+                doc.text('Bank Accounts', 14, y);
+                y += 10;
+                
+                // Prepare bank data for table
+                const bankData = criminal.bankAccounts.map(item => {
+                    return [
+                        item.bankName || 'N/A',
+                        item.accountNumber || 'N/A'
+                    ];
+                });
+                
+                // Add bank table
+                doc.autoTable({
+                    startY: y,
+                    head: [['Bank Name', 'Account Number']],
+                    body: bankData,
+                    margin: { left: 14 },
+                    styles: { fontSize: 10, textColor: [0] },
+                    headStyles: { fillColor: [0], textColor: [255] },
+                    columnStyles: {
+                        0: { cellWidth: 60 },
+                        1: { cellWidth: 60 }
+                    }
+                });
+                
+                y = doc.lastAutoTable.finalY + 10;
+            }
+            
+            // Add source of income section if included
+            if (includeBankInfo && (criminal.incomeSource || criminal.otherIncomeSources)) {
+                // Add a new page if needed
+                if (y > 250) {
+                    doc.addPage();
+                    y = 20;
+                }
+                
+                doc.setFontSize(14);
+                doc.text('Source of Income', 14, y);
+                y += 10;
+                
+                // Create income details table
+                const incomeDetails = [
+                    ['Primary Source', criminal.incomeSource || 'N/A'],
+                    ['Other Sources', criminal.otherIncomeSources || 'N/A']
+                ];
+                
+                doc.autoTable({
+                    startY: y,
+                    head: [['Field', 'Value']],
+                    body: incomeDetails,
+                    margin: { left: 14 },
+                    styles: { fontSize: 10, textColor: [0] },
+                    headStyles: { fillColor: [0], textColor: [255] },
+                    columnStyles: { 
+                        0: { cellWidth: 50, fontStyle: 'bold' },
+                        1: { cellWidth: 'auto' }
+                    }
+                });
+                
+                y = doc.lastAutoTable.finalY + 10;
+            }
+            
+            // Add asset information section if included and exists
+            if (includeAssetInfo && criminal.assets && criminal.assets.length > 0) {
+                // Add a new page if needed
+                if (y > 250) {
+                    doc.addPage();
+                    y = 20;
+                }
+                
+                doc.setFontSize(14);
+                doc.text('Asset Information', 14, y);
+                y += 10;
+                
+                // Prepare asset data for table
+                const assetData = criminal.assets.map(item => {
+                    return [
+                        item.name || 'N/A',
+                        item.value || 'N/A'
+                    ];
+                });
+                
+                // Add asset table
+                doc.autoTable({
+                    startY: y,
+                    head: [['Asset Name', 'Value']],
+                    body: assetData,
+                    margin: { left: 14 },
+                    styles: { fontSize: 10, textColor: [0] },
+                    headStyles: { fillColor: [0], textColor: [255] },
+                    columnStyles: {
+                        0: { cellWidth: 60 },
+                        1: { cellWidth: 60 }
+                    }
+                });
+                
+                y = doc.lastAutoTable.finalY + 10;
+                
+                // Add asset images if they exist
+                let assetImagesAdded = false;
+                criminal.assets.forEach((item, index) => {
+                    if (item.image) {
+                        // Add a new page if needed
+                        if (y > 180) {
+                            doc.addPage();
+                            y = 20;
+                        }
+                        
+                        doc.setFontSize(12);
+                        doc.text(`Asset Image ${index + 1}: ${item.name || 'Unnamed Asset'}`, 14, y);
+                        y += 5;
+                        
+                        const assetImg = new Image();
+                        assetImg.onload = function() {
+                            // Calculate dimensions to maintain aspect ratio
+                            const maxWidth = 80;
+                            const maxHeight = 60;
+                            let width = assetImg.width;
+                            let height = assetImg.height;
+                            
+                            if (width > maxWidth) {
+                                const ratio = maxWidth / width;
+                                width = maxWidth;
+                                height = height * ratio;
+                            }
+                            
+                            if (height > maxHeight) {
+                                const ratio = maxHeight / height;
+                                height = maxHeight;
+                                width = width * ratio;
+                            }
+                            
+                            // Add image to PDF
+                            doc.addImage(item.image, 'JPEG', 14, y, width, height);
+                            y += height + 15;
+                            assetImagesAdded = true;
+                        };
+                        assetImg.src = item.image;
+                    }
+                });
+                
+                if (assetImagesAdded) {
+                    return; // Exit early as we'll continue in the onload callbacks
+                }
+            }
+            
+            // Add page numbers
+            const pageCount = doc.internal.getNumberOfPages();
+            for (let i = 1; i <= pageCount; i++) {
+                doc.setPage(i);
+                doc.setFontSize(10);
+                doc.setTextColor(100);
+                doc.text(`Page ${i} of ${pageCount}`, 105, 287, { align: 'center' });
+            }
+            
+            // Save the PDF
+            doc.save(`Profile_${criminal.name}_${criminal.id}.pdf`);
+        }
+    </script>
+</body>
+</html>
