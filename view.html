@@ -1,0 +1,1028 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Interaction Data View</title>
+    <!-- Firebase SDK -->
+    <script src="https://www.gstatic.com/firebasejs/9.6.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.6.0/firebase-database-compat.js"></script>
+    <!-- Font Awesome for icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <!-- jsPDF for PDF export -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.25/jspdf.plugin.autotable.min.js"></script>
+    <style>
+        * {
+            box-sizing: border-box;
+        }
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            margin: 0;
+            padding: 20px;
+            background-color: #f5f5f5;
+            font-size: 14px;
+        }
+        .container {
+            max-width: 100%;
+            margin: 0 auto;
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+        }
+        h1 {
+            color: #2c3e50;
+            margin-bottom: 20px;
+            text-align: center;
+            font-size: 1.5rem;
+        }
+        .btn {
+            padding: 8px 15px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 14px;
+            font-weight: 600;
+            text-decoration: none;
+            display: inline-block;
+            transition: all 0.3s;
+            margin: 5px;
+        }
+        .btn-primary {
+            background: #3498db;
+            color: white;
+        }
+        .btn-danger {
+            background: #e74c3c;
+            color: white;
+        }
+        .btn-back {
+            background: #95a5a6;
+            color: white;
+            margin-bottom: 20px;
+        }
+        .btn-success {
+            background: #2ecc71;
+            color: white;
+        }
+        .btn-warning {
+            background: #f39c12;
+            color: white;
+        }
+        .btn-info {
+            background: #17a2b8;
+            color: white;
+        }
+        .filter-container {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+            margin-bottom: 20px;
+        }
+        .filter-group {
+            flex: 1;
+            min-width: 200px;
+        }
+        .filter-group label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: 600;
+            color: #2c3e50;
+        }
+        .filter-group select, 
+        .filter-group input {
+            width: 100%;
+            padding: 10px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            font-size: 14px;
+        }
+        .action-buttons-container {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+            margin-bottom: 15px;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 20px;
+        }
+        th, td {
+            padding: 12px 15px;
+            text-align: left;
+            border-bottom: 1px solid #ddd;
+            vertical-align: top;
+        }
+        th {
+            background-color: #3498db;
+            color: white;
+            font-weight: 600;
+            position: sticky;
+            top: 0;
+        }
+        tr:hover {
+            background-color: #f5f5f5;
+        }
+        .action-buttons {
+            display: flex;
+            gap: 5px;
+            flex-wrap: wrap;
+        }
+        .loading-spinner {
+            display: inline-block;
+            border: 3px solid #f3f3f3;
+            border-top: 3px solid #3498db;
+            border-radius: 50%;
+            width: 20px;
+            height: 20px;
+            animation: spin 1s linear infinite;
+            margin-left: 10px;
+            vertical-align: middle;
+        }
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        .pagination {
+            display: flex;
+            justify-content: center;
+            margin-top: 20px;
+            gap: 5px;
+            flex-wrap: wrap;
+        }
+        .pagination button {
+            padding: 8px 12px;
+            background: #3498db;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+        }
+        .pagination button:disabled {
+            background: #95a5a6;
+            cursor: not-allowed;
+        }
+        .no-data {
+            text-align: center;
+            padding: 20px;
+            color: #7f8c8d;
+        }
+        .detail-label {
+            font-weight: 600;
+            color: #7f8c8d;
+            display: block;
+            margin-bottom: 3px;
+            font-size: 12px;
+        }
+        .detail-value {
+            margin-bottom: 8px;
+        }
+        .vehicle-details, .associate-details, .location-details, .officer-details {
+            background-color: #f9f9f9;
+            padding: 8px;
+            border-radius: 4px;
+            margin-top: 5px;
+        }
+        .associate-item, .officer-item {
+            margin-bottom: 8px;
+            padding-bottom: 8px;
+            border-bottom: 1px dashed #ddd;
+        }
+        .associate-item:last-child, .officer-item:last-child {
+            border-bottom: none;
+            margin-bottom: 0;
+            padding-bottom: 0;
+        }
+        .remarks {
+            max-width: 200px;
+            word-wrap: break-word;
+        }
+        .delete-confirm {
+            background-color: #f8d7da;
+            padding: 10px;
+            border-radius: 4px;
+            margin-top: 5px;
+            display: none;
+        }
+        .delete-confirm-buttons {
+            display: flex;
+            gap: 5px;
+            margin-top: 5px;
+        }
+        .compact-cell {
+            max-width: 150px;
+        }
+        .person-info {
+            background-color: #e8f4fc;
+            padding: 15px;
+            border-radius: 5px;
+            margin-bottom: 20px;
+            display: none;
+        }
+        .person-info h2 {
+            margin-top: 0;
+            color: #2c3e50;
+        }
+        .person-info p {
+            margin-bottom: 5px;
+        }
+        .age-display {
+            display: inline-block;
+            margin-left: 5px;
+            font-weight: normal;
+            color: #7f8c8d;
+            font-size: 12px;
+        }
+        @media (max-width: 768px) {
+            .container {
+                padding: 10px;
+            }
+            table {
+                display: block;
+                overflow-x: auto;
+                white-space: nowrap;
+            }
+            .action-buttons {
+                flex-direction: column;
+            }
+            .btn {
+                padding: 6px 10px;
+                font-size: 12px;
+            }
+            th, td {
+                padding: 8px 10px;
+            }
+            h1 {
+                font-size: 1.3rem;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <button class="btn btn-back" onclick="window.location.href='PersonInteractionEntry.html'">
+            <i class="fas fa-arrow-left"></i> Back to Criminal Records
+        </button>
+        
+        <h1>Interaction Records</h1>
+        
+        <div class="person-info" id="personInfo">
+            <h2 id="personName"></h2>
+            <p><strong>ID Card No.:</strong> <span id="personIdCard"></span></p>
+            <p><strong>Date of Birth:</strong> <span id="personDob"></span> <span id="personAge" class="age-display"></span></p>
+            <p><strong>Total Interactions:</strong> <span id="totalInteractions"></span></p>
+        </div>
+        
+        <div class="action-buttons-container">
+            <button class="btn btn-info" id="exportPdfBtn">
+                <i class="fas fa-file-pdf"></i> Export to PDF
+            </button>
+            <button class="btn btn-success" id="exportExcelBtn">
+                <i class="fas fa-file-excel"></i> Export to Excel
+            </button>
+        </div>
+        
+        <div class="filter-container">
+            <div class="filter-group">
+                <label for="searchInput">Search (Name, ID, Vehicle No)</label>
+                <input type="text" id="searchInput" placeholder="Search by name, ID, vehicle no...">
+            </div>
+            <div class="filter-group">
+                <label for="idCardFilter">Search by ID Card No.</label>
+                <input type="text" id="idCardFilter" placeholder="Enter ID Card No.">
+            </div>
+            <div class="filter-group">
+                <label for="cityFilter">Filter by City</label>
+                <select id="cityFilter">
+                    <option value="">All Cities</option>
+                </select>
+            </div>
+            <div class="filter-group">
+                <label for="dateFilter">Filter by Date</label>
+                <input type="date" id="dateFilter">
+            </div>
+            <div class="filter-group" style="align-self: flex-end;">
+                <button class="btn btn-primary" id="searchBtn">
+                    <i class="fas fa-search"></i> Search
+                </button>
+                <button class="btn btn-danger" id="resetBtn">
+                    <i class="fas fa-times"></i> Reset
+                </button>
+            </div>
+        </div>
+        
+        <div id="loadingIndicator" style="text-align: center; display: none;">
+            <div class="loading-spinner"></div>
+            <p>Loading data...</p>
+        </div>
+        
+        <div style="overflow-x: auto;">
+            <table id="interactionsTable">
+                <thead>
+                    <tr>
+                        <th>ID Card No.</th>
+                        <th>Name & Contact</th>
+                        <th class="compact-cell">Location & City</th>
+                        <th>Vehicle Details</th>
+                        <th>Interacted Officers</th>
+                        <th>Associates</th>
+                        <th class="compact-cell">Remarks</th>
+                        <th>Date</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody id="interactionsBody">
+                    <!-- Data will be loaded here -->
+                </tbody>
+            </table>
+        </div>
+        
+        <div class="pagination" id="paginationControls">
+            <button id="prevPage" disabled><i class="fas fa-chevron-left"></i> Previous</button>
+            <span id="pageInfo">Page 1 of 1</span>
+            <button id="nextPage" disabled>Next <i class="fas fa-chevron-right"></i></button>
+        </div>
+    </div>
+
+    <script>
+        // Initialize Firebase
+        const firebaseConfig = {
+            apiKey: "AIzaSyCqdg6ePdCGvlzHpaEFgOUFPaHEsPYIApw",
+            authDomain: "operationinterectiondata.firebaseapp.com",
+            databaseURL: "https://operationinterectiondata-default-rtdb.firebaseio.com",
+            projectId: "operationinterectiondata",
+            storageBucket: "operationinterectiondata.appspot.com",
+            messagingSenderId: "211887231593",
+            appId: "1:211887231593:web:aac4253ab20803876348f8",
+            measurementId: "G-HSL5TF5FTB"
+        };
+
+        const app = firebase.initializeApp(firebaseConfig);
+        const database = firebase.database(app);
+        
+        const urlParams = new URLSearchParams(window.location.search);
+        const criminalId = urlParams.get('criminalId');
+        
+        let currentPage = 1;
+        const recordsPerPage = 10;
+        let allInteractions = [];
+        let filteredInteractions = [];
+        let uniqueCities = new Set();
+        let currentPersonInfo = null;
+        
+        document.addEventListener('DOMContentLoaded', function() {
+            loadInteractions();
+            
+            document.getElementById('searchBtn').addEventListener('click', searchInteractions);
+            document.getElementById('resetBtn').addEventListener('click', resetSearch);
+            document.getElementById('searchInput').addEventListener('keypress', function(e) {
+                if (e.key === 'Enter') searchInteractions();
+            });
+            document.getElementById('idCardFilter').addEventListener('keypress', function(e) {
+                if (e.key === 'Enter') searchInteractions();
+            });
+            document.getElementById('cityFilter').addEventListener('change', searchInteractions);
+            document.getElementById('dateFilter').addEventListener('change', searchInteractions);
+            document.getElementById('prevPage').addEventListener('click', goToPrevPage);
+            document.getElementById('nextPage').addEventListener('click', goToNextPage);
+            document.getElementById('exportPdfBtn').addEventListener('click', exportToPDF);
+            document.getElementById('exportExcelBtn').addEventListener('click', exportToExcel);
+        });
+        
+        function loadInteractions() {
+            document.getElementById('loadingIndicator').style.display = 'block';
+            document.getElementById('interactionsBody').innerHTML = '';
+            document.getElementById('personInfo').style.display = 'none';
+            currentPersonInfo = null;
+            
+            let interactionsRef = database.ref('interactions');
+            
+            if (criminalId) {
+                interactionsRef = interactionsRef.orderByChild('criminalId').equalTo(criminalId);
+            } else {
+                interactionsRef = interactionsRef.orderByChild('timestamp');
+            }
+            
+            interactionsRef.once('value')
+                .then(snapshot => {
+                    allInteractions = [];
+                    uniqueCities.clear();
+                    snapshot.forEach(childSnapshot => {
+                        const interaction = childSnapshot.val();
+                        interaction.key = childSnapshot.key;
+                        allInteractions.push(interaction);
+                        
+                        // Collect unique cities
+                        if (interaction.city) {
+                            uniqueCities.add(interaction.city);
+                        }
+                    });
+                    
+                    allInteractions.reverse();
+                    filteredInteractions = [...allInteractions];
+                    
+                    // Populate city filter dropdown
+                    const cityFilter = document.getElementById('cityFilter');
+                    cityFilter.innerHTML = '<option value="">All Cities</option>';
+                    uniqueCities.forEach(city => {
+                        const option = document.createElement('option');
+                        option.value = city;
+                        option.textContent = city;
+                        cityFilter.appendChild(option);
+                    });
+                    
+                    updateTable();
+                    updatePaginationControls();
+                    document.getElementById('loadingIndicator').style.display = 'none';
+                })
+                .catch(error => {
+                    console.error('Error loading interactions:', error);
+                    document.getElementById('loadingIndicator').style.display = 'none';
+                    document.getElementById('interactionsBody').innerHTML = `
+                        <tr><td colspan="9" class="no-data">Error loading data</td></tr>
+                    `;
+                });
+        }
+        
+        function updateTable() {
+            const interactionsBody = document.getElementById('interactionsBody');
+            interactionsBody.innerHTML = '';
+            
+            if (filteredInteractions.length === 0) {
+                interactionsBody.innerHTML = `
+                    <tr><td colspan="9" class="no-data">No interactions found</td></tr>
+                `;
+                return;
+            }
+            
+            const startIndex = (currentPage - 1) * recordsPerPage;
+            const endIndex = Math.min(startIndex + recordsPerPage, filteredInteractions.length);
+            const pageInteractions = filteredInteractions.slice(startIndex, endIndex);
+            
+            pageInteractions.forEach(interaction => {
+                const row = document.createElement('tr');
+                
+                // Format date
+                let formattedDate = 'N/A';
+                if (interaction.timestamp) {
+                    const date = new Date(interaction.timestamp);
+                    formattedDate = date.toLocaleDateString() + ' ' + date.toLocaleTimeString();
+                }
+                
+                // Vehicle details
+                let vehicleHtml = 'N/A';
+                if (interaction.vehicleRegNo || interaction.vehicleChassisNo || interaction.vehicleModel || interaction.vehicleType) {
+                    vehicleHtml = `
+                        <div class="vehicle-details">
+                            <div><span class="detail-label">Reg No:</span> ${interaction.vehicleRegNo || 'N/A'}</div>
+                            <div><span class="detail-label">Chassis:</span> ${interaction.vehicleChassisNo || 'N/A'}</div>
+                            <div><span class="detail-label">Model:</span> ${interaction.vehicleModel || 'N/A'}</div>
+                            <div><span class="detail-label">Type:</span> ${interaction.vehicleType || 'N/A'}</div>
+                        </div>
+                    `;
+                }
+                
+                // Officers - updated to use interactedOfficers field if officers field doesn't exist
+                let officersHtml = 'N/A';
+                if (interaction.officers && interaction.officers.length > 0) {
+                    officersHtml = '<div class="officer-details">';
+                    interaction.officers.forEach(officer => {
+                        officersHtml += `
+                            <div class="officer-item">
+                                <div><span class="detail-label">Name:</span> ${officer.name || 'N/A'}</div>
+                                <div><span class="detail-label">Badge:</span> ${officer.badgeNo || 'N/A'}</div>
+                                <div><span class="detail-label">Dept:</span> ${officer.department || 'N/A'}</div>
+                            </div>
+                        `;
+                    });
+                    officersHtml += '</div>';
+                } else if (interaction.interactedOfficers) {
+                    // Handle the case where officers are stored in the interactedOfficers text field
+                    officersHtml = '<div class="officer-details">';
+                    const officers = interaction.interactedOfficers.split('\n').filter(Boolean);
+                    officers.forEach(officer => {
+                        officersHtml += `
+                            <div class="officer-item">
+                                <div>${officer}</div>
+                            </div>
+                        `;
+                    });
+                    officersHtml += '</div>';
+                }
+                
+                // Associates
+                let associatesHtml = 'N/A';
+                if (interaction.associates && interaction.associates.length > 0) {
+                    associatesHtml = '<div class="associate-details">';
+                    interaction.associates.forEach(associate => {
+                        associatesHtml += `
+                            <div class="associate-item">
+                                <div><span class="detail-label">Name:</span> ${associate.name || 'N/A'}</div>
+                                <div><span class="detail-label">ID:</span> ${associate.id || 'N/A'}</div>
+                                <div><span class="detail-label">Address:</span> ${associate.address || 'N/A'}</div>
+                            </div>
+                        `;
+                    });
+                    associatesHtml += '</div>';
+                }
+                
+                // Location & City
+                let locationHtml = 'N/A';
+                if (interaction.location || interaction.city) {
+                    locationHtml = `
+                        <div class="location-details">
+                            <div><span class="detail-label">Location:</span> ${interaction.location || 'N/A'}</div>
+                            <div><span class="detail-label">City:</span> ${interaction.city || 'N/A'}</div>
+                        </div>
+                    `;
+                }
+                
+                row.innerHTML = `
+                    <td>${interaction.idCardNo || 'N/A'}</td>
+                    <td>
+                        <div><strong>${interaction.name || 'N/A'}</strong></div>
+                        ${interaction.nickname ? `<div><span class="detail-label">Nick:</span> ${interaction.nickname}</div>` : ''}
+                        ${interaction.dob ? `<div><span class="detail-label">DOB:</span> ${formatDate(interaction.dob)}</div>` : ''}
+                        <div><span class="detail-label">Contact:</span> ${interaction.contact || 'N/A'}</div>
+                    </td>
+                    <td class="compact-cell">${locationHtml}</td>
+                    <td>${vehicleHtml}</td>
+                    <td>${officersHtml}</td>
+                    <td>${associatesHtml}</td>
+                    <td class="compact-cell"><div class="remarks">${interaction.remarks || 'N/A'}</div></td>
+                    <td>${formattedDate}</td>
+                    <td>
+                        <div class="action-buttons">
+                            <button class="btn btn-primary" onclick="editInteraction('${interaction.key}')">
+                                <i class="fas fa-edit"></i> Edit
+                            </button>
+                            <button class="btn btn-danger" onclick="showDeleteConfirm('${interaction.key}')">
+                                <i class="fas fa-trash"></i> Delete
+                            </button>
+                        </div>
+                        <div class="delete-confirm" id="delete-confirm-${interaction.key}">
+                            <div>Are you sure?</div>
+                            <div class="delete-confirm-buttons">
+                                <button class="btn btn-success" onclick="deleteInteraction('${interaction.key}')">
+                                    <i class="fas fa-check"></i> Yes
+                                </button>
+                                <button class="btn btn-danger" onclick="hideDeleteConfirm('${interaction.key}')">
+                                    <i class="fas fa-times"></i> No
+                                </button>
+                            </div>
+                        </div>
+                    </td>
+                `;
+                
+                interactionsBody.appendChild(row);
+            });
+        }
+        
+        function formatDate(dateString) {
+            if (!dateString) return 'N/A';
+            const date = new Date(dateString);
+            return isNaN(date.getTime()) ? dateString : date.toLocaleDateString();
+        }
+        
+        function calculateAge(dobString) {
+            if (!dobString) return null;
+            
+            const dob = new Date(dobString);
+            if (isNaN(dob.getTime())) return null;
+            
+            const today = new Date();
+            let age = today.getFullYear() - dob.getFullYear();
+            const monthDiff = today.getMonth() - dob.getMonth();
+            
+            if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < dob.getDate())) {
+                age--;
+            }
+            
+            return age;
+        }
+        
+        function editInteraction(interactionKey) {
+            window.location.href = `interaction-entry.html?editId=${interactionKey}`;
+        }
+        
+        function showDeleteConfirm(interactionKey) {
+            document.querySelectorAll('.delete-confirm').forEach(el => el.style.display = 'none');
+            document.getElementById(`delete-confirm-${interactionKey}`).style.display = 'block';
+        }
+        
+        function hideDeleteConfirm(interactionKey) {
+            document.getElementById(`delete-confirm-${interactionKey}`).style.display = 'none';
+        }
+        
+        function deleteInteraction(interactionKey) {
+            if (!confirm('Permanently delete this interaction?')) return;
+            
+            database.ref(`interactions/${interactionKey}`).remove()
+                .then(() => {
+                    alert('Deleted successfully');
+                    loadInteractions();
+                })
+                .catch(error => {
+                    alert('Delete failed: ' + error.message);
+                });
+        }
+        
+        function searchInteractions() {
+            const searchTerm = document.getElementById('searchInput').value.trim().toLowerCase();
+            const idCardFilter = document.getElementById('idCardFilter').value.trim();
+            const selectedCity = document.getElementById('cityFilter').value;
+            const selectedDate = document.getElementById('dateFilter').value;
+            
+            // Reset person info display
+            document.getElementById('personInfo').style.display = 'none';
+            currentPersonInfo = null;
+            
+            filteredInteractions = allInteractions.filter(interaction => {
+                // Filter by ID card if specified
+                if (idCardFilter) {
+                    if (!interaction.idCardNo || !interaction.idCardNo.toLowerCase().includes(idCardFilter.toLowerCase())) {
+                        return false;
+                    }
+                }
+                
+                // Filter by search term
+                let matchesSearch = true;
+                if (searchTerm) {
+                    matchesSearch = (
+                        (interaction.name && interaction.name.toLowerCase().includes(searchTerm)) ||
+                        (interaction.idCardNo && interaction.idCardNo.toLowerCase().includes(searchTerm)) ||
+                        (interaction.contact && interaction.contact.toLowerCase().includes(searchTerm)) ||
+                        (interaction.location && interaction.location.toLowerCase().includes(searchTerm)) ||
+                        (interaction.city && interaction.city.toLowerCase().includes(searchTerm)) ||
+                        (interaction.vehicleRegNo && interaction.vehicleRegNo.toLowerCase().includes(searchTerm))
+                    );
+                    
+                    // Check associates if search term exists
+                    if (!matchesSearch && interaction.associates) {
+                        matchesSearch = interaction.associates.some(associate => {
+                            return (
+                                (associate.name && associate.name.toLowerCase().includes(searchTerm)) ||
+                                (associate.id && associate.id.toLowerCase().includes(searchTerm))
+                            );
+                        });
+                    }
+                    
+                    // Check officers if search term exists
+                    if (!matchesSearch && (interaction.officers || interaction.interactedOfficers)) {
+                        if (interaction.officers) {
+                            matchesSearch = interaction.officers.some(officer => {
+                                return (
+                                    (officer.name && officer.name.toLowerCase().includes(searchTerm)) ||
+                                    (officer.badgeNo && officer.badgeNo.toLowerCase().includes(searchTerm))
+                                );
+                            });
+                        } else if (interaction.interactedOfficers) {
+                            matchesSearch = interaction.interactedOfficers.toLowerCase().includes(searchTerm);
+                        }
+                    }
+                }
+                
+                // Filter by city
+                let matchesCity = true;
+                if (selectedCity) {
+                    matchesCity = interaction.city === selectedCity;
+                }
+                
+                // Filter by date
+                let matchesDate = true;
+                if (selectedDate) {
+                    if (!interaction.timestamp) return false;
+                    const interactionDate = new Date(interaction.timestamp).toISOString().split('T')[0];
+                    matchesDate = interactionDate === selectedDate;
+                }
+                
+                return matchesSearch && matchesCity && matchesDate;
+            });
+            
+            // If searching by ID card, show person info
+            if (idCardFilter && filteredInteractions.length > 0) {
+                const firstInteraction = filteredInteractions[0];
+                const age = firstInteraction.dob ? calculateAge(firstInteraction.dob) : null;
+                
+                currentPersonInfo = {
+                    name: firstInteraction.name || 'Unknown',
+                    idCardNo: firstInteraction.idCardNo || 'N/A',
+                    dob: firstInteraction.dob ? formatDate(firstInteraction.dob) : 'N/A',
+                    age: age ? `${age} years` : '',
+                    totalInteractions: filteredInteractions.length
+                };
+                
+                document.getElementById('personName').textContent = currentPersonInfo.name;
+                document.getElementById('personIdCard').textContent = currentPersonInfo.idCardNo;
+                document.getElementById('personDob').textContent = currentPersonInfo.dob;
+                document.getElementById('personAge').textContent = currentPersonInfo.age;
+                document.getElementById('totalInteractions').textContent = currentPersonInfo.totalInteractions;
+                document.getElementById('personInfo').style.display = 'block';
+            }
+            
+            currentPage = 1;
+            updateTable();
+            updatePaginationControls();
+        }
+        
+        function resetSearch() {
+            document.getElementById('searchInput').value = '';
+            document.getElementById('idCardFilter').value = '';
+            document.getElementById('cityFilter').value = '';
+            document.getElementById('dateFilter').value = '';
+            filteredInteractions = [...allInteractions];
+            document.getElementById('personInfo').style.display = 'none';
+            currentPersonInfo = null;
+            currentPage = 1;
+            updateTable();
+            updatePaginationControls();
+        }
+        
+        function goToPrevPage() {
+            if (currentPage > 1) {
+                currentPage--;
+                updateTable();
+                updatePaginationControls();
+                window.scrollTo({ top: 0, behavior: 'smooth' });
+            }
+        }
+        
+        function goToNextPage() {
+            const totalPages = Math.ceil(filteredInteractions.length / recordsPerPage);
+            if (currentPage < totalPages) {
+                currentPage++;
+                updateTable();
+                updatePaginationControls();
+                window.scrollTo({ top: 0, behavior: 'smooth' });
+            }
+        }
+        
+        function updatePaginationControls() {
+            const totalPages = Math.ceil(filteredInteractions.length / recordsPerPage);
+            document.getElementById('prevPage').disabled = currentPage <= 1;
+            document.getElementById('nextPage').disabled = currentPage >= totalPages;
+            document.getElementById('pageInfo').textContent = `Page ${currentPage} of ${totalPages}`;
+        }
+        
+        function exportToPDF() {
+            const { jsPDF } = window.jspdf;
+            const doc = new jsPDF({
+                orientation: 'landscape',
+                unit: 'mm'
+            });
+            
+            // Title
+            doc.setFontSize(18);
+            doc.text('Interaction Records', 14, 15);
+            
+            // Date
+            doc.setFontSize(10);
+            doc.text(`Generated on: ${new Date().toLocaleString()}`, 14, 22);
+            
+            // Person info if available
+            if (currentPersonInfo) {
+                doc.setFontSize(14);
+                doc.text(`Person: ${currentPersonInfo.name} (ID: ${currentPersonInfo.idCardNo})`, 14, 29);
+                doc.text(`Date of Birth: ${currentPersonInfo.dob} (${currentPersonInfo.age})`, 14, 36);
+                doc.text(`Total Interactions: ${currentPersonInfo.totalInteractions}`, 14, 43);
+            }
+            
+            // Filter info
+            const filterText = getCurrentFilterText();
+            if (filterText) {
+                doc.setFontSize(10);
+                doc.text(`Filters: ${filterText}`, 14, currentPersonInfo ? 50 : 29);
+            }
+            
+            // Prepare data for the table
+            const tableData = filteredInteractions.map(interaction => {
+                // Format date
+                let formattedDate = 'N/A';
+                if (interaction.timestamp) {
+                    const date = new Date(interaction.timestamp);
+                    formattedDate = date.toLocaleDateString() + ' ' + date.toLocaleTimeString();
+                }
+                
+                // Format name and contact
+                let nameContact = `${interaction.name || 'N/A'}`;
+                if (interaction.nickname) nameContact += ` (${interaction.nickname})`;
+                if (interaction.dob) nameContact += `\nDOB: ${formatDate(interaction.dob)}`;
+                nameContact += `\nContact: ${interaction.contact || 'N/A'}`;
+                
+                // Format location and city
+                let locationCity = `${interaction.location || 'N/A'}\n${interaction.city || 'N/A'}`;
+                
+                // Format vehicle details
+                let vehicleDetails = 'N/A';
+                if (interaction.vehicleRegNo || interaction.vehicleModel) {
+                    vehicleDetails = '';
+                    if (interaction.vehicleRegNo) vehicleDetails += `Reg: ${interaction.vehicleRegNo}\n`;
+                    if (interaction.vehicleChassisNo) vehicleDetails += `Chassis: ${interaction.vehicleChassisNo}\n`;
+                    if (interaction.vehicleModel) vehicleDetails += `Model: ${interaction.vehicleModel}\n`;
+                    if (interaction.vehicleType) vehicleDetails += `Type: ${interaction.vehicleType}`;
+                }
+                
+                // Format officers
+                let officersText = 'N/A';
+                if (interaction.officers && interaction.officers.length > 0) {
+                    officersText = interaction.officers.map(officer => 
+                        `${officer.name || 'N/A'} (${officer.badgeNo || 'N/A'}, ${officer.department || 'N/A'})`
+                    ).join('\n');
+                } else if (interaction.interactedOfficers) {
+                    officersText = interaction.interactedOfficers.split('\n').filter(Boolean).join('\n');
+                }
+                
+                // Format associates
+                let associatesText = 'N/A';
+                if (interaction.associates && interaction.associates.length > 0) {
+                    associatesText = interaction.associates.map(associate => 
+                        `${associate.name || 'N/A'} (${associate.id || 'N/A'}, ${associate.address || 'N/A'})`
+                    ).join('\n');
+                }
+                
+                return [
+                    interaction.idCardNo || 'N/A',
+                    nameContact,
+                    locationCity,
+                    vehicleDetails,
+                    officersText,
+                    associatesText,
+                    interaction.remarks || 'N/A',
+                    formattedDate
+                ];
+            });
+            
+            // Calculate startY position based on content
+            let startY = currentPersonInfo ? 57 : 36;
+            if (filterText) startY += 7;
+            
+            // Add table
+            doc.autoTable({
+                head: [
+                    ['ID Card No.', 'Name & Contact', 'Location & City', 'Vehicle Details', 
+                     'Officers', 'Associates', 'Remarks', 'Date']
+                ],
+                body: tableData,
+                startY: startY,
+                margin: { top: 20, left: 10, right: 10 },
+                styles: {
+                    fontSize: 8,
+                    cellPadding: 2,
+                    overflow: 'linebreak',
+                    valign: 'middle'
+                },
+                columnStyles: {
+                    0: {cellWidth: 20},
+                    1: {cellWidth: 25},
+                    2: {cellWidth: 25},
+                    3: {cellWidth: 30},
+                    4: {cellWidth: 30},
+                    5: {cellWidth: 30},
+                    6: {cellWidth: 30},
+                    7: {cellWidth: 20}
+                },
+                headStyles: {
+                    fillColor: [52, 152, 219],
+                    textColor: 255,
+                    fontStyle: 'bold',
+                    valign: 'middle'
+                },
+                alternateRowStyles: {
+                    fillColor: [240, 240, 240]
+                },
+                didDrawPage: function(data) {
+                    // Footer - Report Prepared By section
+                    doc.setFontSize(10);
+                    doc.setTextColor(0);
+                    
+                    // Report Prepared By section with proper spacing
+                    const footerY = doc.internal.pageSize.height - 25;
+                    
+                    doc.text('Report Prepared By:', 15, footerY - 15);
+                    doc.text('Name: Constable Ahmed Vaseem SN5637', 15, footerY - 10);
+                    doc.text('Unit: Rapid Response & Addu City High Visibility', 15, footerY - 5);
+                    
+                    // Signature space with proper spacing
+                    doc.text('Signature:', 15, footerY + 5);
+                    
+                    // Add empty space for signature (3 blank lines)
+                    doc.setFontSize(12);
+                    doc.text('_________________________', 15, footerY + 10);
+                    
+                    // Page number
+                    doc.setFontSize(10);
+                    doc.setTextColor(150);
+                    doc.text(`Page ${data.pageNumber}`, data.settings.margin.left, doc.internal.pageSize.height - 10);
+                }
+            });
+            
+            // Save the PDF with appropriate name
+            let fileName = 'interaction_records';
+            if (currentPersonInfo) {
+                fileName = `interactions_${currentPersonInfo.name.replace(/[^a-z0-9]/gi, '_')}_${currentPersonInfo.idCardNo}`;
+            }
+            fileName += `_${new Date().toISOString().slice(0,10)}.pdf`;
+            
+            doc.save(fileName);
+        }
+
+        function exportToExcel() {
+            // Create CSV content
+            let csvContent = "data:text/csv;charset=utf-8,";
+            
+            // Add headers
+            const headers = [
+                "ID Card No.",
+                "Name",
+                "Nickname",
+                "Date of Birth",
+                "Contact",
+                "Location",
+                "City",
+                "Vehicle Reg No",
+                "Vehicle Chassis No",
+                "Vehicle Model",
+                "Vehicle Type",
+                "Officers",
+                "Associates",
+                "Remarks",
+                "Date"
+            ];
+            csvContent += headers.join(",") + "\r\n";
+            
+            // Add data rows
+            filteredInteractions.forEach(interaction => {
+                // Format officers information
+                let officersText = 'N/A';
+                if (interaction.officers && interaction.officers.length > 0) {
+                    officersText = interaction.officers.map(officer => 
+                        `${officer.name || ''} (${officer.badgeNo || ''}, ${officer.department || ''})`
+                    ).join('; ');
+                } else if (interaction.interactedOfficers) {
+                    officersText = interaction.interactedOfficers.replace(/\n/g, '; ');
+                }
+                
+                // Format associates information
+                let associatesText = 'N/A';
+                if (interaction.associates && interaction.associates.length > 0) {
+                    associatesText = interaction.associates.map(associate => 
+                        `${associate.name || ''} (${associate.id || ''}, ${associate.address || ''})`
+                    ).join('; ');
+                }
+                
+                const row = [
+                    `"${interaction.idCardNo || ''}"`,
+                    `"${interaction.name || ''}"`,
+                    `"${interaction.nickname || ''}"`,
+                    `"${interaction.dob ? formatDate(interaction.dob) : ''}"`,
+                    `"${interaction.contact || ''}"`,
+                    `"${interaction.location || ''}"`,
+                    `"${interaction.city || ''}"`,
+                    `"${interaction.vehicleRegNo || ''}"`,
+                    `"${interaction.vehicleChassisNo || ''}"`,
+                    `"${interaction.vehicleModel || ''}"`,
+                    `"${interaction.vehicleType || ''}"`,
+                    `"${officersText}"`,
+                    `"${associatesText}"`,
+                    `"${interaction.remarks || ''}"`,
+                    interaction.timestamp ? new Date(interaction.timestamp).toLocaleString() : ''
+                ];
+                csvContent += row.join(",") + "\r\n";
+            });
+            
+            // Create download link
+            const encodedUri = encodeURI(csvContent);
+            const link = document.createElement("a");
+            link.setAttribute("href", encodedUri);
+            
+            let fileName = 'interaction_records';
+            if (currentPersonInfo) {
+                fileName = `interactions_${currentPersonInfo.name.replace(/[^a-z0-9]/gi, '_')}_${currentPersonInfo.idCardNo}`;
+            }
+            fileName += `_${new Date().toISOString().slice(0,10)}.csv`;
+            
+            link.setAttribute("download", fileName);
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+        }
+        
+        function getCurrentFilterText() {
+            const parts = [];
+            const searchTerm = document.getElementById('searchInput').value.trim();
+            const idCardFilter = document.getElementById('idCardFilter').value.trim();
+            const selectedCity = document.getElementById('cityFilter').value;
+            const selectedDate = document.getElementById('dateFilter').value;
+            
+            if (searchTerm) parts.push(`Search: ${searchTerm}`);
+            if (idCardFilter) parts.push(`ID Card: ${idCardFilter}`);
+            if (selectedCity) parts.push(`City: ${selectedCity}`);
+            if (selectedDate) parts.push(`Date: ${selectedDate}`);
+            
+            return parts.join(', ');
+        }
+    </script>
+</body>
+</html>
