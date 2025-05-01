@@ -1,0 +1,1257 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Criminal Network Visualization</title>
+    <!-- Firebase SDK -->
+    <script src="https://www.gstatic.com/firebasejs/9.6.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.6.0/firebase-database-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.6.0/firebase-storage-compat.js"></script>
+    <!-- jsPDF for PDF generation -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <!-- Vis.js for network visualization -->
+    <script src="https://unpkg.com/vis-network/standalone/umd/vis-network.min.js"></script>
+    <!-- Font Awesome for icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        * {
+            box-sizing: border-box;
+        }
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            margin: 0;
+            padding: 0;
+            background-color: #f5f5f5;
+        }
+        .container {
+            width: 100%;
+            max-width: 1200px;
+            margin: 0 auto;
+            background: white;
+            padding: 20px;
+            min-height: 100vh;
+        }
+        h1 {
+            color: #2c3e50;
+            margin: 10px 0 20px;
+            text-align: center;
+        }
+        .network-header {
+            margin-bottom: 15px;
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+            align-items: center;
+        }
+        .network-title {
+            flex-grow: 1;
+        }
+        #networkName {
+            font-size: 24px;
+            font-weight: bold;
+            border: none;
+            background: transparent;
+            padding: 5px;
+            width: 100%;
+            max-width: 500px;
+            border-bottom: 2px solid #3498db;
+        }
+        .network-controls {
+            margin: 15px 0;
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+        }
+        .network-controls button {
+            padding: 8px 15px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 14px;
+            display: flex;
+            align-items: center;
+            gap: 5px;
+        }
+        .save-btn {
+            background: #27ae60;
+            color: white;
+        }
+        .export-btn {
+            background: #3498db;
+            color: white;
+        }
+        .cancel-btn {
+            background: #95a5a6;
+            color: white;
+        }
+        .network-pdf-btn {
+            background: #e74c3c;
+            color: white;
+        }
+        .network-edit-btn {
+            background: #3498db;
+            color: white;
+        }
+        .network-delete-btn {
+            background: #e74c3c;
+            color: white;
+        }
+        .filter-btn {
+            background: #9b59b6;
+            color: white;
+        }
+        .search-btn {
+            background: #f39c12;
+            color: white;
+        }
+        .layout-btn {
+            background: #1abc9c;
+            color: white;
+        }
+        #network {
+            width: 100%;
+            height: 600px;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+            background-color: white;
+        }
+        .network-form {
+            margin-top: 20px;
+            padding: 15px;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+            background-color: #f9f9f9;
+        }
+        .form-group {
+            margin-bottom: 15px;
+        }
+        .form-group label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: bold;
+        }
+        .form-group select, 
+        .form-group input {
+            width: 100%;
+            padding: 8px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            font-size: 14px;
+        }
+        .network-edit-controls {
+            display: flex;
+            gap: 10px;
+            margin-top: 10px;
+        }
+        .instructions {
+            margin-top: 15px;
+            font-size: 13px;
+        }
+        .instructions ul {
+            margin-top: 5px;
+            padding-left: 20px;
+        }
+        .search-container {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 15px;
+        }
+        .search-container input {
+            flex-grow: 1;
+            padding: 8px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+        }
+        .search-container button {
+            padding: 8px 15px;
+        }
+        .filter-container {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 15px;
+            flex-wrap: wrap;
+        }
+        .filter-container select {
+            flex-grow: 1;
+            min-width: 200px;
+            padding: 8px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+        }
+        .position-controls {
+            display: flex;
+            gap: 10px;
+            margin-top: 10px;
+        }
+        .position-controls button {
+            padding: 8px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            background: #34495e;
+            color: white;
+        }
+        .color-picker {
+            display: flex;
+            gap: 5px;
+            margin-top: 10px;
+        }
+        .color-option {
+            width: 25px;
+            height: 25px;
+            border-radius: 50%;
+            cursor: pointer;
+            border: 2px solid #fff;
+            box-shadow: 0 0 2px rgba(0,0,0,0.3);
+        }
+        .color-option.selected {
+            border: 2px solid #000;
+        }
+        .layout-options {
+            display: none;
+            margin-top: 10px;
+            padding: 10px;
+            background: #f0f0f0;
+            border-radius: 4px;
+        }
+        .layout-options.active {
+            display: block;
+        }
+        .layout-option-group {
+            margin-bottom: 10px;
+        }
+        .layout-option-group label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: bold;
+        }
+
+        @media (max-width: 768px) {
+            .container {
+                padding: 10px;
+            }
+            
+            #network {
+                height: 400px;
+            }
+            
+            .network-controls {
+                flex-direction: column;
+            }
+            
+            .network-controls button {
+                width: 100%;
+            }
+            
+            .network-edit-controls {
+                flex-direction: column;
+            }
+            
+            .network-edit-controls button {
+                width: 100%;
+            }
+            
+            .search-container, 
+            .filter-container {
+                flex-direction: column;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="network-header">
+            <div class="network-title">
+                <input type="text" id="networkName" placeholder="Enter Network Name" value="Criminal Network Visualization">
+            </div>
+            <div>
+                <button class="save-btn" onclick="saveNetwork()"><i class="fas fa-save"></i> Save Network</button>
+            </div>
+        </div>
+        
+        <div class="search-container">
+            <input type="text" id="searchInput" placeholder="Search by ID or Name">
+            <button class="search-btn" onclick="searchNetwork()"><i class="fas fa-search"></i> Search</button>
+        </div>
+        
+        <div class="filter-container">
+            <select id="gangFilter" onchange="filterByGang()">
+                <option value="">All Gangs</option>
+            </select>
+            <select id="layoutSelector" onchange="changeLayout()">
+                <option value="forceAtlas2Based">Force Atlas Layout</option>
+                <option value="hierarchical">Hierarchical Layout</option>
+                <option value="random">Random Layout</option>
+                <option value="manual">Manual Positioning</option>
+            </select>
+            <button class="layout-btn" onclick="toggleLayoutOptions()"><i class="fas fa-project-diagram"></i> Layout Options</button>
+            <button class="layout-btn" onclick="stabilizeNetwork()"><i class="fas fa-network-wired"></i> Stabilize</button>
+        </div>
+        
+        <div id="layoutOptions" class="layout-options">
+            <div class="layout-option-group">
+                <label for="hierarchicalDirection">Hierarchical Direction:</label>
+                <select id="hierarchicalDirection" onchange="updateHierarchicalLayout()">
+                    <option value="UD">Up-Down</option>
+                    <option value="DU">Down-Up</option>
+                    <option value="LR">Left-Right</option>
+                    <option value="RL">Right-Left</option>
+                </select>
+            </div>
+            <div class="layout-option-group">
+                <label for="nodeSpacing">Node Spacing:</label>
+                <input type="number" id="nodeSpacing" value="150" min="50" max="500" onchange="updateLayoutSpacing()">
+            </div>
+            <div class="layout-option-group">
+                <label for="levelSeparation">Level Separation:</label>
+                <input type="number" id="levelSeparation" value="150" min="50" max="500" onchange="updateLayoutSpacing()">
+            </div>
+        </div>
+        
+        <div id="network"></div>
+        
+        <div class="network-controls">
+            <button class="export-btn" onclick="exportNetworkImage()"><i class="fas fa-image"></i> Export as Image</button>
+            <button class="network-pdf-btn" onclick="exportNetworkToPDF()"><i class="fas fa-file-pdf"></i> Export as PDF</button>
+            <button class="filter-btn" onclick="toggleColorPicker()"><i class="fas fa-palette"></i> Node Colors</button>
+            <button class="cancel-btn" onclick="window.close()"><i class="fas fa-times"></i> Close</button>
+        </div>
+        
+        <div id="colorPicker" class="network-form" style="display: none;">
+            <h3>Node Color Scheme</h3>
+            <div class="color-picker">
+                <div class="color-option selected" style="background-color: #1f77b4;" onclick="changeColorScheme('1f77b4')"></div>
+                <div class="color-option" style="background-color: #ff7f0e;" onclick="changeColorScheme('ff7f0e')"></div>
+                <div class="color-option" style="background-color: #2ca02c;" onclick="changeColorScheme('2ca02c')"></div>
+                <div class="color-option" style="background-color: #d62728;" onclick="changeColorScheme('d62728')"></div>
+                <div class="color-option" style="background-color: #9467bd;" onclick="changeColorScheme('9467bd')"></div>
+                <div class="color-option" style="background-color: #8c564b;" onclick="changeColorScheme('8c564b')"></div>
+                <div class="color-option" style="background-color: #e377c2;" onclick="changeColorScheme('e377c2')"></div>
+                <div class="color-option" style="background-color: #7f7f7f;" onclick="changeColorScheme('7f7f7f')"></div>
+                <div class="color-option" style="background-color: #bcbd22;" onclick="changeColorScheme('bcbd22')"></div>
+                <div class="color-option" style="background-color: #17becf;" onclick="changeColorScheme('17becf')"></div>
+            </div>
+        </div>
+        
+        <div class="network-form">
+            <h3>Network Controls</h3>
+            <div class="form-group">
+                <label for="networkSource">Source Criminal</label>
+                <select id="networkSource" class="form-control">
+                    <option value="">Select Source Criminal</option>
+                </select>
+            </div>
+            
+            <div class="form-group">
+                <label for="networkTarget">Target Criminal</label>
+                <select id="networkTarget" class="form-control">
+                    <option value="">Select Target Criminal</option>
+                </select>
+            </div>
+            
+            <div class="form-group">
+                <label for="networkRelation">Relationship Type</label>
+                <input type="text" id="networkRelation" placeholder="e.g. Partner, Family, etc." class="form-control">
+            </div>
+            
+            <div class="network-edit-controls">
+                <button class="network-edit-btn" onclick="addNetworkConnection()"><i class="fas fa-plus"></i> Add Connection</button>
+                <button class="network-delete-btn" onclick="deleteSelectedNetworkItems()"><i class="fas fa-trash"></i> Delete Selected</button>
+            </div>
+            
+            <div class="position-controls">
+                <button title="Fix Position" onclick="fixNodePosition()"><i class="fas fa-map-pin"></i></button>
+                <button title="Release Position" onclick="releaseNodePosition()"><i class="fas fa-lock-open"></i></button>
+                <button title="Center View" onclick="centerSelectedNode()"><i class="fas fa-crosshairs"></i></button>
+            </div>
+            
+            <div class="instructions">
+                <p><strong>Instructions:</strong></p>
+                <ul>
+                    <li>Click and drag to move nodes</li>
+                    <li>Click on a node to select it</li>
+                    <li>Shift+Click to select multiple items</li>
+                    <li>Click and drag on canvas to pan</li>
+                    <li>Scroll to zoom in/out</li>
+                    <li>Use the position controls to lock nodes in place</li>
+                </ul>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Firebase configuration
+        const firebaseConfig = {
+            apiKey: "AIzaSyCqdg6ePdCGvlzHpaEFgOUFPaHEsPYIApw",
+            authDomain: "operationinterectiondata.firebaseapp.com",
+            databaseURL: "https://operationinterectiondata-default-rtdb.firebaseio.com",
+            projectId: "operationinterectiondata",
+            storageBucket: "operationinterectiondata.appspot.com",
+            messagingSenderId: "211887231593",
+            appId: "1:211887231593:web:aac4253ab20803876348f8",
+            measurementId: "G-HSL5TF5FTB"
+        };
+        
+        // Initialize Firebase
+        firebase.initializeApp(firebaseConfig);
+        const database = firebase.database();
+        const storage = firebase.storage();
+        
+        // Global variables
+        let allCriminals = [];
+        let network = null;
+        let networkData = { nodes: [], edges: [] };
+        let networkOptions = {};
+        let isNetworkEditMode = false;
+        let currentColorScheme = '1f77b4';
+        let allGangs = new Set();
+        let currentLayout = 'forceAtlas2Based';
+
+        // Initialize network visualization options
+        function initializeNetworkOptions() {
+            networkOptions = {
+                nodes: {
+                    shape: 'dot',
+                    size: 20,
+                    font: {
+                        size: 12,
+                        color: '#000000'
+                    },
+                    borderWidth: 2,
+                    color: {
+                        border: '#000000',
+                        background: `#${currentColorScheme}`,
+                        highlight: {
+                            border: '#2B7CE9',
+                            background: '#D2E5FF'
+                        },
+                        hover: {
+                            border: '#2B7CE9',
+                            background: '#D2E5FF'
+                        }
+                    }
+                },
+                edges: {
+                    width: 2,
+                    arrows: {
+                        to: { enabled: false, scaleFactor: 1, type: 'arrow' },
+                        middle: { enabled: false, scaleFactor: 1, type: 'arrow' },
+                        from: { enabled: false, scaleFactor: 1, type: 'arrow' }
+                    },
+                    smooth: {
+                        type: 'continuous'
+                    },
+                    font: {
+                        size: 10,
+                        align: 'middle'
+                    },
+                    color: {
+                        color: '#848484',
+                        highlight: '#2B7CE9',
+                        hover: '#2B7CE9'
+                    }
+                },
+                physics: {
+                    enabled: true,
+                    solver: 'forceAtlas2Based',
+                    forceAtlas2Based: {
+                        gravitationalConstant: -50,
+                        centralGravity: 0.01,
+                        springLength: 100,
+                        springConstant: 0.08,
+                        damping: 0.4
+                    },
+                    stabilization: {
+                        enabled: true,
+                        iterations: 1000,
+                        updateInterval: 25
+                    }
+                },
+                interaction: {
+                    hover: true,
+                    tooltipDelay: 200,
+                    hideEdgesOnDrag: false,
+                    multiselect: true
+                },
+                layout: {
+                    randomSeed: 42 // For consistent random layouts
+                }
+            };
+        }
+
+        // Load criminals from Firebase
+        function loadCriminals() {
+            database.ref('criminals').once('value', (snapshot) => {
+                const criminals = snapshot.val() || {};
+                allCriminals = Object.entries(criminals).map(([key, value]) => ({ ...value, firebaseKey: key }));
+                
+                // Collect all unique gangs
+                allGangs = new Set();
+                allCriminals.forEach(criminal => {
+                    if (criminal.group) {
+                        allGangs.add(criminal.group);
+                    }
+                });
+                
+                // Populate gang filter dropdown
+                const gangFilter = document.getElementById('gangFilter');
+                gangFilter.innerHTML = '<option value="">All Gangs</option>';
+                allGangs.forEach(gang => {
+                    const option = document.createElement('option');
+                    option.value = gang;
+                    option.textContent = gang;
+                    gangFilter.appendChild(option);
+                });
+                
+                // Populate criminal dropdowns
+                const sourceSelect = document.getElementById('networkSource');
+                const targetSelect = document.getElementById('networkTarget');
+                
+                sourceSelect.innerHTML = '<option value="">Select Source Criminal</option>';
+                targetSelect.innerHTML = '<option value="">Select Target Criminal</option>';
+                
+                allCriminals.forEach(criminal => {
+                    const option = document.createElement('option');
+                    option.value = criminal.firebaseKey || criminal.id;
+                    option.textContent = `${criminal.name || 'Unknown'} (${criminal.id || 'N/A'})`;
+                    
+                    sourceSelect.appendChild(option.cloneNode(true));
+                    targetSelect.appendChild(option);
+                });
+                
+                // Load network data
+                loadNetworkData();
+            }).catch(error => {
+                console.error("Error loading criminals:", error);
+            });
+        }
+        
+        function loadNetworkData() {
+            database.ref('network').once('value', (snapshot) => {
+                const data = snapshot.val() || { nodes: [], edges: [], name: "Criminal Network Visualization" };
+                
+                // Set network name
+                document.getElementById('networkName').value = data.name || "Criminal Network Visualization";
+                
+                // Convert to vis.js format
+                networkData.nodes = new vis.DataSet(data.nodes.map(node => ({
+                    id: node.id,
+                    label: node.label,
+                    title: node.title,
+                    group: node.group,
+                    image: node.image,
+                    shape: 'circularImage',
+                    size: 25,
+                    color: {
+                        border: '#000000',
+                        background: `#${currentColorScheme}`,
+                        highlight: {
+                            border: '#2B7CE9',
+                            background: '#D2E5FF'
+                        },
+                        hover: {
+                            border: '#2B7CE9',
+                            background: '#D2E5FF'
+                        }
+                    },
+                    x: node.x,
+                    y: node.y,
+                    fixed: node.fixed || false
+                })));
+                
+                networkData.edges = new vis.DataSet(data.edges.map(edge => ({
+                    id: edge.id,
+                    from: edge.from,
+                    to: edge.to,
+                    label: edge.label,
+                    arrows: edge.arrows || 'to',
+                    smooth: edge.smooth || true
+                })));
+                
+                // Initialize the network
+                const container = document.getElementById('network');
+                network = new vis.Network(container, networkData, networkOptions);
+                
+                // Add event listeners
+                network.on("selectNode", function(params) {
+                    if (isNetworkEditMode) {
+                        document.getElementById('networkSource').value = params.nodes[0];
+                    }
+                });
+                
+                // Stabilize the network when loaded
+                network.once("stabilizationIterationsDone", function() {
+                    network.setOptions({ physics: currentLayout === 'manual' ? false : true });
+                });
+                
+            }).catch(error => {
+                console.error("Error loading network data:", error);
+            });
+        }
+        
+        function addNetworkConnection() {
+            const sourceId = document.getElementById('networkSource').value;
+            const targetId = document.getElementById('networkTarget').value;
+            const relation = document.getElementById('networkRelation').value;
+            
+            if (!sourceId || !targetId) {
+                alert('Please select both source and target criminals');
+                return;
+            }
+            
+            if (sourceId === targetId) {
+                alert('Source and target cannot be the same');
+                return;
+            }
+            
+            // Find the criminals
+            const sourceCriminal = allCriminals.find(c => c.firebaseKey === sourceId || c.id === sourceId);
+            const targetCriminal = allCriminals.find(c => c.firebaseKey === targetId || c.id === targetId);
+            
+            if (!sourceCriminal || !targetCriminal) {
+                alert('One or both criminals not found');
+                return;
+            }
+            
+            // Check if nodes exist, if not add them
+            let sourceNode = networkData.nodes.get(sourceId);
+            if (!sourceNode) {
+                sourceNode = {
+                    id: sourceId,
+                    label: sourceCriminal.name || 'Unknown',
+                    title: `ID: ${sourceCriminal.id || 'N/A'}\nGroup: ${sourceCriminal.group || 'N/A'}`,
+                    group: sourceCriminal.group || 'default',
+                    image: sourceCriminal.image || 'https://via.placeholder.com/50?text=No+Photo',
+                    shape: 'circularImage',
+                    size: 25,
+                    color: {
+                        border: '#000000',
+                        background: `#${currentColorScheme}`,
+                        highlight: {
+                            border: '#2B7CE9',
+                            background: '#D2E5FF'
+                        },
+                        hover: {
+                            border: '#2B7CE9',
+                            background: '#D2E5FF'
+                        }
+                    }
+                };
+                networkData.nodes.add(sourceNode);
+            }
+            
+            let targetNode = networkData.nodes.get(targetId);
+            if (!targetNode) {
+                targetNode = {
+                    id: targetId,
+                    label: targetCriminal.name || 'Unknown',
+                    title: `ID: ${targetCriminal.id || 'N/A'}\nGroup: ${targetCriminal.group || 'N/A'}`,
+                    group: targetCriminal.group || 'default',
+                    image: targetCriminal.image || 'https://via.placeholder.com/50?text=No+Photo',
+                    shape: 'circularImage',
+                    size: 25,
+                    color: {
+                        border: '#000000',
+                        background: `#${currentColorScheme}`,
+                        highlight: {
+                            border: '#2B7CE9',
+                            background: '#D2E5FF'
+                        },
+                        hover: {
+                            border: '#2B7CE9',
+                            background: '#D2E5FF'
+                        }
+                    }
+                };
+                networkData.nodes.add(targetNode);
+            }
+            
+            // Add edge (connection)
+            const edgeId = `${sourceId}-${targetId}`;
+            const edge = {
+                id: edgeId,
+                from: sourceId,
+                to: targetId,
+                label: relation || 'Connected',
+                arrows: 'to',
+                smooth: true
+            };
+            
+            networkData.edges.add(edge);
+            
+            // Clear form
+            document.getElementById('networkSource').value = '';
+            document.getElementById('networkTarget').value = '';
+            document.getElementById('networkRelation').value = '';
+            
+            // Focus the network on the new connection
+            network.focus(sourceId, {
+                scale: 0.8,
+                animation: {
+                    duration: 1000,
+                    easingFunction: 'easeInOutQuad'
+                }
+            });
+        }
+        
+        function deleteSelectedNetworkItems() {
+            const selectedNodes = network.getSelectedNodes();
+            const selectedEdges = network.getSelectedEdges();
+            
+            if (selectedNodes.length === 0 && selectedEdges.length === 0) {
+                alert('Please select nodes or edges to delete');
+                return;
+            }
+            
+            if (confirm('Are you sure you want to delete the selected items?')) {
+                // Delete selected nodes
+                selectedNodes.forEach(nodeId => {
+                    networkData.nodes.remove(nodeId);
+                    
+                    // Also remove any edges connected to this node
+                    const connectedEdges = network.getConnectedEdges(nodeId);
+                    connectedEdges.forEach(edgeId => {
+                        networkData.edges.remove(edgeId);
+                    });
+                });
+                
+                // Delete selected edges
+                selectedEdges.forEach(edgeId => {
+                    networkData.edges.remove(edgeId);
+                });
+                
+                network.unselectAll();
+            }
+        }
+        
+        function saveNetwork() {
+            // Get network name
+            const networkName = document.getElementById('networkName').value || "Criminal Network Visualization";
+            
+            // Convert vis DataSets to plain arrays for Firebase
+            const nodes = networkData.nodes.get().map(node => ({
+                id: node.id,
+                label: node.label,
+                title: node.title,
+                group: node.group,
+                image: node.image,
+                x: node.x,
+                y: node.y,
+                fixed: node.fixed || false
+            }));
+            
+            const edges = networkData.edges.get().map(edge => ({
+                id: edge.id,
+                from: edge.from,
+                to: edge.to,
+                label: edge.label,
+                arrows: edge.arrows,
+                smooth: edge.smooth
+            }));
+            
+            // Save to Firebase
+            database.ref('network').set({ nodes, edges, name: networkName })
+                .then(() => {
+                    alert('Network saved successfully');
+                })
+                .catch(error => {
+                    console.error("Error saving network:", error);
+                    alert('Error saving network: ' + error.message);
+                });
+        }
+        
+        function exportNetworkImage() {
+            // Get the network canvas
+            const canvas = document.querySelector('#network canvas');
+            
+            // Create a temporary canvas with white background
+            const tempCanvas = document.createElement('canvas');
+            tempCanvas.width = canvas.width;
+            tempCanvas.height = canvas.height;
+            const ctx = tempCanvas.getContext('2d');
+            
+            // Fill with white background
+            ctx.fillStyle = 'white';
+            ctx.fillRect(0, 0, tempCanvas.width, tempCanvas.height);
+            
+            // Draw the network on top
+            ctx.drawImage(canvas, 0, 0);
+            
+            // Create a temporary link to download the image
+            const link = document.createElement('a');
+            link.download = 'criminal_network_' + new Date().toISOString().slice(0, 10) + '.png';
+            link.href = tempCanvas.toDataURL('image/png', 1.0); // Highest quality
+            link.click();
+        }
+        
+        function exportNetworkToPDF() {
+            // Show loading state
+            const pdfBtn = document.querySelector('.network-pdf-btn');
+            const originalText = pdfBtn.textContent;
+            pdfBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Generating HD PDF...';
+            pdfBtn.disabled = true;
+
+            // Create a temporary high-res container
+            const container = document.createElement('div');
+            container.style.position = 'absolute';
+            container.style.left = '-9999px';
+            document.body.appendChild(container);
+
+            try {
+                // Get original network container
+                const originalContainer = document.getElementById('network');
+                
+                // Create a high-resolution clone (4x size for better quality in PDF)
+                const hiResContainer = document.createElement('div');
+                hiResContainer.id = 'network-hires';
+                hiResContainer.style.width = (originalContainer.offsetWidth * 4) + 'px';
+                hiResContainer.style.height = (originalContainer.offsetHeight * 4) + 'px';
+                container.appendChild(hiResContainer);
+
+                // Create a new network instance with higher resolution
+                const hiResNetwork = new vis.Network(
+                    hiResContainer, 
+                    {
+                        nodes: new vis.DataSet(networkData.nodes.get()),
+                        edges: new vis.DataSet(networkData.edges.get())
+                    },
+                    {
+                        ...networkOptions,
+                        nodes: {
+                            ...networkOptions.nodes,
+                            size: networkOptions.nodes.size * 4, // Quadruple node size
+                            font: {
+                                size: networkOptions.nodes.font.size * 4 // Quadruple font size
+                            }
+                        },
+                        edges: {
+                            ...networkOptions.edges,
+                            width: networkOptions.edges.width * 4 // Quadruple edge width
+                        },
+                        physics: false // Disable physics for static image
+                    }
+                );
+
+                // Wait for rendering to complete
+                setTimeout(() => {
+                    try {
+                        // Get the canvas
+                        const hiResCanvas = hiResContainer.querySelector('canvas');
+                        
+                        // Create PDF
+                        const { jsPDF } = window.jspdf;
+                        const doc = new jsPDF({
+                            orientation: 'landscape',
+                            unit: 'mm',
+                            format: 'a3' // Use A3 for larger image
+                        });
+
+                        // Set document properties
+                        doc.setProperties({
+                            title: 'Criminal Network Visualization',
+                            subject: 'Criminal Network',
+                            author: 'Criminal Records System',
+                            keywords: 'criminal, network, visualization'
+                        });
+
+                        // Add title
+                        doc.setFontSize(24);
+                        doc.setTextColor(44, 62, 80);
+                        const networkName = document.getElementById('networkName').value || "Criminal Network Visualization";
+                        doc.text(networkName, 210 / 2, 20, { align: 'center' });
+
+                        // Add date
+                        doc.setFontSize(14);
+                        doc.text(`Generated on: ${new Date().toLocaleDateString()}`, 210 / 2, 30, { align: 'center' });
+
+                        // Convert canvas to image data (PNG for lossless quality)
+                        const imgData = hiResCanvas.toDataURL('image/png');
+
+                        // Calculate dimensions to fit the page
+                        const pageWidth = doc.internal.pageSize.getWidth() - 40;
+                        const pageHeight = doc.internal.pageSize.getHeight() - 60;
+                        
+                        // Maintain aspect ratio
+                        const imgRatio = hiResCanvas.width / hiResCanvas.height;
+                        const pageRatio = pageWidth / pageHeight;
+                        
+                        let finalWidth, finalHeight;
+                        if (imgRatio > pageRatio) {
+                            finalWidth = pageWidth;
+                            finalHeight = pageWidth / imgRatio;
+                        } else {
+                            finalHeight = pageHeight;
+                            finalWidth = pageHeight * imgRatio;
+                        }
+
+                        // Center the image
+                        const x = (doc.internal.pageSize.getWidth() - finalWidth) / 2;
+                        const y = 40;
+
+                        // Add the ultra HD image to PDF
+                        doc.addImage(imgData, 'PNG', x, y, finalWidth, finalHeight);
+
+                        // Add legend if gangs are present
+                        if (allGangs.size > 0) {
+                            doc.setFontSize(12);
+                            doc.setTextColor(100, 100, 100);
+                            let legendY = doc.internal.pageSize.getHeight() - 15;
+                            
+                            doc.text('Gang Legend:', 20, legendY);
+                            legendY -= 5;
+                            
+                            let xPos = 20;
+                            let colorIndex = 0;
+                            const colors = [
+                                '#1f77b4', '#ff7f0e', '#2ca02c', '#d62728', '#9467bd',
+                                '#8c564b', '#e377c2', '#7f7f7f', '#bcbd22', '#17becf'
+                            ];
+                            
+                            allGangs.forEach(gang => {
+                                if (xPos > 180) {
+                                    xPos = 20;
+                                    legendY -= 5;
+                                }
+                                
+                                doc.setFillColor(colors[colorIndex % colors.length]);
+                                doc.rect(xPos, legendY - 2, 3, 3, 'F');
+                                doc.text(gang, xPos + 5, legendY);
+                                
+                                xPos += 40;
+                                colorIndex++;
+                            });
+                        }
+
+                        // Save the PDF
+                        const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
+                        const fileName = networkName.toLowerCase().replace(/ /g, '_') + `_${timestamp}.pdf`;
+                        doc.save(fileName);
+
+                    } catch (error) {
+                        console.error("Error generating PDF:", error);
+                        alert('Error generating PDF: ' + error.message);
+                    } finally {
+                        // Clean up
+                        container.remove();
+                        pdfBtn.innerHTML = '<i class="fas fa-file-pdf"></i> Export as PDF';
+                        pdfBtn.disabled = false;
+                    }
+                }, 1500); // Give more time for rendering
+
+            } catch (error) {
+                console.error("Error setting up HD render:", error);
+                alert('Error setting up HD render: ' + error.message);
+                container.remove();
+                pdfBtn.innerHTML = '<i class="fas fa-file-pdf"></i> Export as PDF';
+                pdfBtn.disabled = false;
+            }
+        }
+
+        function searchNetwork() {
+            const searchTerm = document.getElementById('searchInput').value.toLowerCase();
+            if (!searchTerm) return;
+            
+            // Search in nodes
+            const foundNodes = networkData.nodes.get({
+                filter: function(node) {
+                    return (node.label && node.label.toLowerCase().includes(searchTerm)) ||
+                           (node.id && node.id.toLowerCase().includes(searchTerm)) ||
+                           (node.title && node.title.toLowerCase().includes(searchTerm));
+                }
+            });
+            
+            if (foundNodes.length > 0) {
+                // Focus on the first found node
+                network.focus(foundNodes[0].id, {
+                    scale: 0.8,
+                    animation: {
+                        duration: 1000,
+                        easingFunction: 'easeInOutQuad'
+                    }
+                });
+                
+                // Highlight all found nodes
+                const highlightOptions = {
+                    highlight: {
+                        border: '#FF0000',
+                        background: '#FFCCCC'
+                    }
+                };
+                
+                networkData.nodes.update(foundNodes.map(node => ({
+                    id: node.id,
+                    ...highlightOptions
+                })));
+                
+                // Reset highlighting after 3 seconds
+                setTimeout(() => {
+                    networkData.nodes.update(foundNodes.map(node => ({
+                        id: node.id,
+                        color: {
+                            border: '#000000',
+                            background: `#${currentColorScheme}`,
+                            highlight: {
+                                border: '#2B7CE9',
+                                background: '#D2E5FF'
+                            },
+                            hover: {
+                                border: '#2B7CE9',
+                                background: '#D2E5FF'
+                            }
+                        }
+                    })));
+                }, 3000);
+            } else {
+                alert('No matching criminals found');
+            }
+        }
+        
+        function filterByGang() {
+            const selectedGang = document.getElementById('gangFilter').value;
+            
+            if (!selectedGang) {
+                // Show all nodes
+                networkData.nodes.update(
+                    networkData.nodes.get().map(node => ({
+                        id: node.id,
+                        hidden: false
+                    }))
+                );
+                
+                // Show all edges
+                networkData.edges.update(
+                    networkData.edges.get().map(edge => ({
+                        id: edge.id,
+                        hidden: false
+                    }))
+                );
+                return;
+            }
+            
+            // Hide nodes not in the selected gang
+            networkData.nodes.update(
+                networkData.nodes.get().map(node => ({
+                    id: node.id,
+                    hidden: node.group !== selectedGang
+                }))
+            );
+            
+            // Also hide edges connected to hidden nodes
+            const visibleNodeIds = networkData.nodes.get({
+                filter: node => node.group === selectedGang
+            }).map(node => node.id);
+            
+            networkData.edges.update(
+                networkData.edges.get().map(edge => ({
+                    id: edge.id,
+                    hidden: !visibleNodeIds.includes(edge.from) || !visibleNodeIds.includes(edge.to)
+                }))
+            );
+        }
+        
+        function changeLayout() {
+            currentLayout = document.getElementById('layoutSelector').value;
+            
+            switch(currentLayout) {
+                case 'forceAtlas2Based':
+                    network.setOptions({
+                        physics: {
+                            enabled: true,
+                            solver: 'forceAtlas2Based',
+                            forceAtlas2Based: {
+                                gravitationalConstant: -50,
+                                centralGravity: 0.01,
+                                springLength: 100,
+                                springConstant: 0.08,
+                                damping: 0.4
+                            }
+                        },
+                        layout: {
+                            hierarchical: {
+                                enabled: false
+                            }
+                        }
+                    });
+                    break;
+                    
+                case 'hierarchical':
+                    updateHierarchicalLayout();
+                    break;
+                    
+                case 'random':
+                    network.setOptions({
+                        physics: false,
+                        layout: {
+                            randomSeed: Math.floor(Math.random() * 1000),
+                            improvedLayout: true,
+                            hierarchical: {
+                                enabled: false
+                            }
+                        }
+                    });
+                    break;
+                    
+                case 'manual':
+                    network.setOptions({
+                        physics: false,
+                        layout: {
+                            hierarchical: {
+                                enabled: false
+                            }
+                        }
+                    });
+                    break;
+            }
+            
+            // Stabilize the network
+            network.stabilize();
+        }
+        
+        function updateHierarchicalLayout() {
+            const direction = document.getElementById('hierarchicalDirection').value;
+            const nodeSpacing = parseInt(document.getElementById('nodeSpacing').value);
+            const levelSeparation = parseInt(document.getElementById('levelSeparation').value);
+            
+            network.setOptions({
+                physics: false,
+                layout: {
+                    hierarchical: {
+                        enabled: true,
+                        direction: direction,
+                        sortMethod: 'directed',
+                        nodeSpacing: nodeSpacing,
+                        levelSeparation: levelSeparation
+                    }
+                }
+            });
+            
+            network.stabilize();
+        }
+        
+        function updateLayoutSpacing() {
+            if (currentLayout === 'hierarchical') {
+                updateHierarchicalLayout();
+            }
+        }
+        
+        function toggleLayoutOptions() {
+            const options = document.getElementById('layoutOptions');
+            options.classList.toggle('active');
+        }
+        
+        function stabilizeNetwork() {
+            network.setOptions({ physics: currentLayout === 'manual' ? false : true });
+            network.stabilize();
+            setTimeout(() => {
+                if (currentLayout !== 'forceAtlas2Based') {
+                    network.setOptions({ physics: false });
+                }
+            }, 1000);
+        }
+        
+        function toggleColorPicker() {
+            const picker = document.getElementById('colorPicker');
+            picker.style.display = picker.style.display === 'none' ? 'block' : 'none';
+        }
+        
+        function changeColorScheme(color) {
+            currentColorScheme = color;
+            
+            // Update all nodes with new color
+            networkData.nodes.update(
+                networkData.nodes.get().map(node => ({
+                    id: node.id,
+                    color: {
+                        border: '#000000',
+                        background: `#${color}`,
+                        highlight: {
+                            border: '#2B7CE9',
+                            background: '#D2E5FF'
+                        },
+                        hover: {
+                            border: '#2B7CE9',
+                            background: '#D2E5FF'
+                        }
+                    }
+                }))
+            );
+            
+            // Update selected state in color picker
+            document.querySelectorAll('.color-option').forEach(option => {
+                option.classList.remove('selected');
+                if (option.style.backgroundColor === `rgb(${parseInt(color.substr(0,2), 16)}, ${parseInt(color.substr(2,2), 16)}, ${parseInt(color.substr(4,2), 16)})`) {
+                    option.classList.add('selected');
+                }
+            });
+        }
+        
+        function fixNodePosition() {
+            const selectedNodes = network.getSelectedNodes();
+            if (selectedNodes.length === 0) {
+                alert('Please select nodes to fix in position');
+                return;
+            }
+            
+            // Get current positions
+            const positions = network.getPositions(selectedNodes);
+            
+            // Update nodes with fixed positions
+            networkData.nodes.update(
+                selectedNodes.map(nodeId => ({
+                    id: nodeId,
+                    fixed: true,
+                    x: positions[nodeId].x,
+                    y: positions[nodeId].y
+                }))
+            );
+        }
+        
+        function releaseNodePosition() {
+            const selectedNodes = network.getSelectedNodes();
+            if (selectedNodes.length === 0) {
+                alert('Please select nodes to release');
+                return;
+            }
+            
+            // Update nodes to release positions
+            networkData.nodes.update(
+                selectedNodes.map(nodeId => ({
+                    id: nodeId,
+                    fixed: false
+                }))
+            );
+        }
+        
+        function centerSelectedNode() {
+            const selectedNodes = network.getSelectedNodes();
+            if (selectedNodes.length === 0) {
+                alert('Please select a node to center');
+                return;
+            }
+            
+            network.focus(selectedNodes[0], {
+                scale: 0.8,
+                animation: {
+                    duration: 1000,
+                    easingFunction: 'easeInOutQuad'
+                }
+            });
+        }
+
+        // Initialize the app when DOM is fully loaded
+        document.addEventListener('DOMContentLoaded', function() {
+            initializeNetworkOptions();
+            loadCriminals();
+            
+            // Add keyboard shortcut for search (Ctrl+F or Cmd+F)
+            document.addEventListener('keydown', function(e) {
+                if ((e.ctrlKey || e.metaKey) && e.key === 'f') {
+                    e.preventDefault();
+                    document.getElementById('searchInput').focus();
+                }
+            });
+        });
+    </script>
+</body>
+</html>
